@@ -1,11 +1,17 @@
 # app.py
 # appappapp
+
 import math
 from typing import List, Dict
+from io import BytesIO
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+import boto3
+import requests
+import uuid
 
 # ===== 基本設定 =====
 st.set_page_config(page_title="柑橘レコメンダ 🍊", page_icon="🍊", layout="wide")
@@ -62,9 +68,28 @@ def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+@st.cache_data(ttl=3600)
+def load_citrus_df(key: str | None = None):
+    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        raise RuntimeError(f"R2の接続情報が見つからない．.streamlit/secrets.toml に {missing} を設定すること．")
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
+        aws_access_key_id=st.secrets["r2_access_key_id"],
+        aws_secret_access_key=st.secrets["r2_secret_access_key"],
+    )
+    obj_key = key or st.secrets.get("r2_key")
+    if not obj_key:
+        raise RuntimeError("R2のオブジェクトキーが未指定である．入力欄にキーを入れるか，secrets['r2_key'] を設定すること．")
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=obj_key)
+    return pd.read_csv(BytesIO(obj["Body"].read()), encoding="utf-8-sig")
+
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
+    """常にR2から取得する．ローカルCSVは読まない（要求どおり）．"""
+    df = load_citrus_df(path or None)  # UIの入力値をそのままR2キーとして使用
     df = _standardize_columns(df)
 
     # 必須カラム確認
@@ -92,6 +117,36 @@ def parse_seasons(cell: str) -> List[str]:
     if not cell:
         return []
     return [s.strip().lower() for s in str(cell).split(",") if s.strip()]
+
+def _append_log(input_dict: dict, top_rows: list[dict]) -> None:
+    """
+    D1へログPOSTする．同一内容の連投を避けるため，直近ペイロードをセッションに記録する．
+    Secretsに log_api_url と log_api_token が無ければ何もしない．
+    """
+    url = st.secrets.get("log_api_url")
+    token = st.secrets.get("log_api_token")
+    if not url or not token:
+        return  # ログAPI未設定なら静かにスキップ
+
+    # 重複送信ガード
+    payload = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
+        "input_json": input_dict,
+        # 解析や可視化を想定し，上位のname/score/distanceのみを薄く送る
+        "result": {"top": top_rows},
+    }
+    key = str(hash(str(payload["input_json"]) + str(payload["result"])))
+    if st.session_state.get("last_log_key") == key:
+        return
+
+    try:
+        r = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"}, timeout=5)
+        r.raise_for_status()
+        st.session_state["last_log_key"] = key
+    except Exception as e:
+        # 失敗してもアプリ本体は止めない
+        st.info(f"ログ送信をスキップした（理由：{e}）")
 
 # ===== 推薦計算 =====
 def score_items(
@@ -177,7 +232,12 @@ col_left, col_right = st.columns([1, 2], gap="large")
 
 with col_left:
     st.subheader("2) データの読み込み")
-    data_file = st.text_input("CSVパス", value="citrus_features.csv", help="例: data/citrus_features.csv")
+    default_key = st.secrets.get("r2_key", "citrus_features.csv")
+    data_file = st.text_input(
+        "R2オブジェクトキー",
+        value=default_key,
+        help="例: citrus_features.csv または datasets/2025/citrus_features.csv．ローカルCSVは読み込まない．"
+    )
     try:
         df = load_data(data_file)
         st.success(f"読み込み成功: {len(df)} 品種")
@@ -199,6 +259,21 @@ with col_right:
     }
 
     ranked = score_items(df, user_vec, season_pref=season_pref, weights=weights)
+
+    # ← 上位結果をD1へ一度だけ送る（同一内容の連投は抑止）
+    try:
+        _append_log(
+            input_dict={
+                "brix": int(brix), "acid": int(acid), "bitterness": int(bitter),
+                "aroma": int(aroma), "moisture": int(moisture), "texture": int(texture),
+                "season_pref": season_pref, "weights": weights, "topk": int(topk),
+            },
+            top_rows=ranked.head(int(topk))[["name", "score", "distance"]]
+                .round({"score": 3, "distance": 3})
+                .to_dict(orient="records"),
+        )
+    except Exception as _:
+        pass  # 万が一の例外でもUIは継続
 
     for i, row in ranked.head(int(topk)).iterrows():
         with st.container(border=True):
