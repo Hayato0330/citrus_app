@@ -68,8 +68,7 @@ html, body, [data-testid="stAppViewContainer"]{
 # ================= 背景レイヤ =================
 st.markdown("""
 <div class="bg-wrap">
-  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuABl6ZxpS3FSttuG4bkC9CndCCiS-mN5SPjsld_4EE7Bf9wqXbJ9PN84sWYcMv-663x498kdpRWDCsM5KqEq-wDXAtMbENu5CrpVZYN39gpX90tbX4Himoa5Dmp5qmHdMJ2ImzsidkMVMB39E-x-xBw8BKjMn2rGO2KmzQkE2oU1V2cAUrsatUmU1YGC5lUA3Y9JXpr2AsoW0aQqwouQ89qQFSuUYOilegGELwiV0BKT2CaY_gzAWYsG5LipUxhRuJwzqR8-OXert0"
-       alt="柑橘の背景">
+  <img src="top_background.png" alt="柑橘の背景">
 </div>
 <div class="bg-overlay"></div>
 """, unsafe_allow_html=True)
@@ -104,10 +103,3 @@ with col2:
 with col3:
     if st.button("ログイン"):
         st.session_state["page"] = "login"
-
-if st.session_state["page"] == "try":
-    st.success("✅ お試しフローへ（ここに推薦処理を組み込めます）")
-elif st.session_state["page"] == "signup":
-    st.info("✍️ 新規登録画面へ遷移する処理をここに追加できます")
-elif st.session_state["page"] == "login":
-    st.info("🔐 ログイン画面へ遷移する処理をここに追加できます")
