@@ -1,9 +1,33 @@
 # app.py
 import streamlit as st
+import base64
+from pathlib import Path
 
+# ----------------------------------------------------------
+# 1️⃣ ページ設定
+# ----------------------------------------------------------
 st.set_page_config(page_title="柑橘類の推薦システム", page_icon="🍊", layout="wide")
 
-# ================= CSS =================
+# ----------------------------------------------------------
+# 2️⃣ ローカル画像をBase64で埋め込む関数
+# ----------------------------------------------------------
+@st.cache_data
+def local_image_to_data_url(path: str) -> str:
+    """ローカル画像をBase64データURLに変換"""
+    p = Path(path)
+    if not p.exists():
+        st.warning(f"画像ファイルが見つかりません: {p}")
+        return ""
+    mime = "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
+    b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
+# 背景画像を読み込む
+bg_url = local_image_to_data_url("top_background.png")
+
+# ----------------------------------------------------------
+# 3️⃣ CSSデザイン
+# ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
@@ -65,15 +89,25 @@ html, body, [data-testid="stAppViewContainer"]{
 </style>
 """, unsafe_allow_html=True)
 
-# ================= 背景レイヤ =================
-st.markdown("""
-<div class="bg-wrap">
-  <img src="top_background.png" alt="柑橘の背景">
-</div>
-<div class="bg-overlay"></div>
-""", unsafe_allow_html=True)
+# ----------------------------------------------------------
+# 4️⃣ 背景レイヤ
+# ----------------------------------------------------------
+if bg_url:
+    st.markdown(f"""
+    <div class="bg-wrap">
+      <img src="{bg_url}" alt="柑橘の背景">
+    </div>
+    <div class="bg-overlay"></div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div class="bg-wrap"></div>
+    <div class="bg-overlay"></div>
+    """, unsafe_allow_html=True)
 
-# ================= ヒーローセクション =================
+# ----------------------------------------------------------
+# 5️⃣ メインヒーローセクション
+# ----------------------------------------------------------
 st.markdown("""
 <div class="hero">
   <h1>柑橘類の推薦システム</h1>
@@ -88,25 +122,3 @@ st.markdown("""
   </div>
 </div>
 """, unsafe_allow_html=True)
-
-# ================= ボタンクリック処理（デモ用） =================
-if "page" not in st.session_state:
-    st.session_state["page"] = None
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    if st.button("お試しで推薦"):
-        st.session_state["page"] = "try"
-with col2:
-    if st.button("新規登録"):
-        st.session_state["page"] = "signup"
-with col3:
-    if st.button("ログイン"):
-        st.session_state["page"] = "login"
-
-if st.session_state["page"] == "try":
-    st.success("✅ お試しフローへ（ここに推薦処理を組み込めます）")
-elif st.session_state["page"] == "signup":
-    st.info("✍️ 新規登録画面へ遷移する処理をここに追加できます")
-elif st.session_state["page"] == "login":
-    st.info("🔐 ログイン画面へ遷移する処理をここに追加できます")
