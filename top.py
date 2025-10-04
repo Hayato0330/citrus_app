@@ -95,7 +95,7 @@ if "page" not in st.session_state:
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    if st.button("お試しで推薦してもらう"):
+    if st.button("お試しで推薦"):
         st.session_state["page"] = "try"
 with col2:
     if st.button("新規登録"):
@@ -103,3 +103,10 @@ with col2:
 with col3:
     if st.button("ログイン"):
         st.session_state["page"] = "login"
+
+if st.session_state["page"] == "try":
+    st.success("✅ お試しフローへ（ここに推薦処理を組み込めます）")
+elif st.session_state["page"] == "signup":
+    st.info("✍️ 新規登録画面へ遷移する処理をここに追加できます")
+elif st.session_state["page"] == "login":
+    st.info("🔐 ログイン画面へ遷移する処理をここに追加できます")
