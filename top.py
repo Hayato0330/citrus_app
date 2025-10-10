@@ -26,7 +26,7 @@ def local_image_to_data_url(path: str) -> str:
 bg_url = local_image_to_data_url("top_background.png")
 
 # ----------------------------------------------------------
-# 3️⃣ CSSデザイン（ボタン拡大＋フォント強調）
+# 3️⃣ CSSデザイン（中央寄せ＋透過＋統一カラー）
 # ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +44,7 @@ html, body, [data-testid="stAppViewContainer"]{
   font-family: "Plus Jakarta Sans", sans-serif;
 }
 
-/* 中央のヒーローセクション */
+/* ------------------ ヒーローセクション ------------------ */
 .hero{
   min-height: 90vh;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -57,18 +57,21 @@ html, body, [data-testid="stAppViewContainer"]{
 /* ------------------ ボタン全般 ------------------ */
 .btn{
   font-weight:800;
-  padding:1.3rem 2.8rem;  /* ← 大きめに */
-  font-size:1.5rem;       /* ← 文字サイズUP */
+  padding:1.3rem 2.8rem;
+  font-size:1.5rem;
   border-radius:1.2rem;
   text-decoration:none;
   transition: all .2s ease;
-  display:inline-block;
+  display:flex;
+  align-items:center;          /* 縦方向中央揃え */
+  justify-content:center;      /* 横方向中央揃え */
   box-shadow:0 6px 14px rgba(0,0,0,0.1);
-  border:3px solid rgba(249,128,6,.6);
-  min-width: 14rem;       /* ← ボタンの最小幅を統一 */
+  border:3px solid rgba(249,128,6,.5);
+  min-width: 14rem;
+  opacity:0.96;                /* ← ほんのり透かす */
 }
 
-/* 🍊 お試しボタン */
+/* 🍊 お試しボタン（強めのオレンジ） */
 .btn-ghost{
   background: linear-gradient(135deg, var(--primary-light), var(--primary));
   color:white;
@@ -78,7 +81,7 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
-/* 🟧 新規登録ボタン（明るめ） */
+/* 🟧 新規登録ボタン（明るめのオレンジ） */
 .btn-primary{
   background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
   color:white;
@@ -88,13 +91,14 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
-/* ⚪ ログインボタン */
+/* 🟧 ログインボタン（新規登録と同系統カラーに統一） */
 .btn-outline{
-  background:white;
-  color:var(--primary);
+  background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
+  color:white;
 }
 .btn-outline:hover{
-  background:rgba(249,128,6,.1);
+  filter:brightness(1.1);
+  box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 </style>
 """, unsafe_allow_html=True)
