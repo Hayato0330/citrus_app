@@ -35,6 +35,8 @@ st.markdown("""
 <style>
 :root{
   --primary:#f98006;
+  --primary-light:#ffa94d;
+  --primary-dark:#d86a00;
 }
 
 html, body, [data-testid="stAppViewContainer"]{
@@ -52,30 +54,49 @@ html, body, [data-testid="stAppViewContainer"]{
 .hero h1{ font-weight:800; font-size:3rem; margin-bottom:.5rem; }
 .hero p{ font-size:1.2rem; opacity:.85; }
 
-/* ボタン */
+/* ボタン全般 */
 .btn{
   font-weight:800; padding:1rem 2rem; font-size:1.2rem;
   border-radius:1rem; text-decoration:none;
   transition: all .2s ease;
   display:inline-block;
+  box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
+
+/* 🔸 お試しボタン（背景オレンジ） */
 .btn-ghost{
-  background:rgba(249,128,6,.15); color:var(--primary);
+  background: linear-gradient(135deg, var(--primary-light), var(--primary));
+  color:white;
 }
-.btn-ghost:hover{ background:rgba(249,128,6,.25); }
+.btn-ghost:hover{
+  filter: brightness(1.1);
+  box-shadow:0 8px 16px rgba(249,128,6,0.3);
+}
+
+/* 🔹 メインボタン */
 .btn-primary{
-  background:var(--primary); color:white; box-shadow:0 6px 16px rgba(249,128,6,.25);
+  background:var(--primary);
+  color:white;
+  box-shadow:0 6px 16px rgba(249,128,6,.25);
 }
-.btn-primary:hover{ filter:brightness(1.1); }
+.btn-primary:hover{
+  filter:brightness(1.1);
+}
+
+/* ⚪ アウトラインボタン */
 .btn-outline{
-  border:2px solid rgba(249,128,6,.6); background:white; color:var(--primary);
+  border:2px solid rgba(249,128,6,.6);
+  background:white;
+  color:var(--primary);
 }
-.btn-outline:hover{ background:rgba(249,128,6,.1); }
+.btn-outline:hover{
+  background:rgba(249,128,6,.1);
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------------
-# 4️⃣ 背景設定（ここが方法①）
+# 4️⃣ 背景設定（方法①）
 # ----------------------------------------------------------
 if bg_url:
     st.markdown(
@@ -104,7 +125,7 @@ st.markdown("""
   <p>あなたにぴったりの品種を紹介します</p>
 
   <div style="margin-top:2rem; display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center;">
-    <a href="#try" class="btn btn-ghost">お試しで推薦してもらう</a>
+    <a href="#try" class="btn btn-ghost">🍊 お試しで推薦してもらう</a>
     <div style="display:flex; flex-direction:column; gap:1rem; min-width:12rem;">
       <a href="#signup" class="btn btn-primary">新規登録</a>
       <a href="#login" class="btn btn-outline">ログイン</a>
