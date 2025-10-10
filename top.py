@@ -26,7 +26,7 @@ def local_image_to_data_url(path: str) -> str:
 bg_url = local_image_to_data_url("top_background.png")
 
 # ----------------------------------------------------------
-# 3️⃣ CSSデザイン（新規登録ボタンの色を明るく）
+# 3️⃣ CSSデザイン（ボタン拡大＋フォント強調）
 # ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +36,7 @@ st.markdown("""
 :root{
   --primary:#f98006;
   --primary-light:#ffa94d;
-  --primary-lighter:#fbbf6b; /* ← 追加：より淡いオレンジ */
+  --primary-lighter:#fbbf6b;
 }
 
 html, body, [data-testid="stAppViewContainer"]{
@@ -51,20 +51,21 @@ html, body, [data-testid="stAppViewContainer"]{
   text-align:center;
   color:#1f1f1f;
 }
-.hero h1{ font-weight:800; font-size:3rem; margin-bottom:.5rem; }
-.hero p{ font-size:1.2rem; opacity:.85; }
+.hero h1{ font-weight:800; font-size:3.5rem; margin-bottom:.8rem; }
+.hero p{ font-size:1.4rem; opacity:.85; }
 
 /* ------------------ ボタン全般 ------------------ */
 .btn{
   font-weight:800;
-  padding:1rem 2rem;
-  font-size:1.2rem;
-  border-radius:1rem;
+  padding:1.3rem 2.8rem;  /* ← 大きめに */
+  font-size:1.5rem;       /* ← 文字サイズUP */
+  border-radius:1.2rem;
   text-decoration:none;
   transition: all .2s ease;
   display:inline-block;
-  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+  box-shadow:0 6px 14px rgba(0,0,0,0.1);
   border:3px solid rgba(249,128,6,.6);
+  min-width: 14rem;       /* ← ボタンの最小幅を統一 */
 }
 
 /* 🍊 お試しボタン */
@@ -74,17 +75,17 @@ html, body, [data-testid="stAppViewContainer"]{
 }
 .btn-ghost:hover{
   filter: brightness(1.1);
-  box-shadow:0 8px 16px rgba(249,128,6,0.3);
+  box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
-/* 🟧 新規登録ボタン（より淡いオレンジに変更） */
+/* 🟧 新規登録ボタン（明るめ） */
 .btn-primary{
   background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
   color:white;
 }
 .btn-primary:hover{
   filter:brightness(1.1);
-  box-shadow:0 8px 16px rgba(249,128,6,0.3);
+  box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
 /* ⚪ ログインボタン */
@@ -127,9 +128,9 @@ st.markdown("""
   <h1>柑橘類の推薦システム</h1>
   <p>あなたにぴったりの品種を紹介します</p>
 
-  <div style="margin-top:2rem; display:flex; flex-wrap:wrap; gap:1.5rem; justify-content:center;">
+  <div style="margin-top:3rem; display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
     <a href="#try" class="btn btn-ghost">🍊 お試しで推薦してもらう</a>
-    <div style="display:flex; flex-direction:column; gap:1rem; min-width:12rem;">
+    <div style="display:flex; flex-direction:column; gap:1.5rem; min-width:14rem;">
       <a href="#signup" class="btn btn-primary">新規登録</a>
       <a href="#login" class="btn btn-outline">ログイン</a>
     </div>
