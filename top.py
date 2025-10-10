@@ -1,4 +1,4 @@
-# app.py
+# top.py
 import streamlit as st
 import base64
 from pathlib import Path
@@ -26,7 +26,7 @@ def local_image_to_data_url(path: str) -> str:
 bg_url = local_image_to_data_url("top_background.png")
 
 # ----------------------------------------------------------
-# 3️⃣ CSSデザイン（背景＋フォント＋UIスタイル）
+# 3️⃣ CSSデザイン（背景＋フォント＋ボタン枠）
 # ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,16 +54,20 @@ html, body, [data-testid="stAppViewContainer"]{
 .hero h1{ font-weight:800; font-size:3rem; margin-bottom:.5rem; }
 .hero p{ font-size:1.2rem; opacity:.85; }
 
-/* ボタン全般 */
+/* ------------------ ボタン全般 ------------------ */
 .btn{
-  font-weight:800; padding:1rem 2rem; font-size:1.2rem;
-  border-radius:1rem; text-decoration:none;
+  font-weight:800;
+  padding:1rem 2rem;
+  font-size:1.2rem;
+  border-radius:1rem;
+  text-decoration:none;
   transition: all .2s ease;
   display:inline-block;
-  box-shadow:0 4px 10px rgba(0,0,0,0.1);
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+  border:3px solid rgba(249,128,6,.6);   /* ← すべてのボタンに枠を追加 */
 }
 
-/* 🔸 お試しボタン（背景オレンジ） */
+/* 🍊 お試しボタン（背景オレンジ） */
 .btn-ghost{
   background: linear-gradient(135deg, var(--primary-light), var(--primary));
   color:white;
@@ -73,19 +77,18 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 16px rgba(249,128,6,0.3);
 }
 
-/* 🔹 メインボタン */
+/* 🟧 新規登録ボタン */
 .btn-primary{
   background:var(--primary);
   color:white;
-  box-shadow:0 6px 16px rgba(249,128,6,.25);
 }
 .btn-primary:hover{
   filter:brightness(1.1);
+  box-shadow:0 8px 16px rgba(249,128,6,0.3);
 }
 
-/* ⚪ アウトラインボタン */
+/* ⚪ ログインボタン */
 .btn-outline{
-  border:2px solid rgba(249,128,6,.6);
   background:white;
   color:var(--primary);
 }
@@ -96,7 +99,7 @@ html, body, [data-testid="stAppViewContainer"]{
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------------
-# 4️⃣ 背景設定（方法①）
+# 4️⃣ 背景設定
 # ----------------------------------------------------------
 if bg_url:
     st.markdown(
