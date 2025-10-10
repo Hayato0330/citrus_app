@@ -1,5 +1,4 @@
 # top.py
-# top.py
 import streamlit as st
 import base64
 from pathlib import Path
@@ -27,7 +26,7 @@ def local_image_to_data_url(path: str) -> str:
 bg_url = local_image_to_data_url("top_background.png")
 
 # ----------------------------------------------------------
-# 3️⃣ CSSデザイン（動き：フェードイン＋パララックス背景）
+# 3️⃣ CSSデザイン（透け感＋フェードアップ）
 # ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,16 +46,16 @@ html, body, [data-testid="stAppViewContainer"]{
 
 /* ------------------ アニメーション定義 ------------------ */
 
-/* 背景をゆっくり動かすパララックス風 */
-@keyframes bgMove {
-  0% { background-position: center 0; }
-  100% { background-position: center 40px; }
-}
-
-/* コンテンツをフェードイン＋スライドアップ */
-@keyframes fadeUp {
+/* タイトルや説明文のフェードアップ（完全に表示） */
+@keyframes fadeUpFull {
   0% { opacity: 0; transform: translateY(30px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ボタン用のフェードアップ（透け感を保つ） */
+@keyframes fadeUpSoft {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 0.95; transform: translateY(0); }
 }
 
 /* ------------------ ヒーローセクション ------------------ */
@@ -66,9 +65,20 @@ html, body, [data-testid="stAppViewContainer"]{
   text-align:center;
   color:#1f1f1f;
 }
-.hero h1{ font-weight:800; font-size:3.5rem; margin-bottom:.8rem;
-  opacity:0; animation: fadeUp 1s ease forwards; animation-delay:0.1s; }
-.hero p{ font-size:1.4rem; opacity:0; animation: fadeUp 1s ease forwards; animation-delay:0.4s; }
+.hero h1{
+  font-weight:800;
+  font-size:3.5rem;
+  margin-bottom:.8rem;
+  opacity:0;
+  animation: fadeUpFull 1s ease forwards;
+  animation-delay:0.1s;
+}
+.hero p{
+  font-size:1.4rem;
+  opacity:0;
+  animation: fadeUpFull 1s ease forwards;
+  animation-delay:0.4s;
+}
 
 /* ------------------ ボタン全般 ------------------ */
 .btn{
@@ -84,12 +94,12 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 6px 14px rgba(0,0,0,0.1);
   border:3px solid rgba(249,128,6,.5);
   min-width: 14rem;
-  opacity:0.95;
-  animation: fadeUp 1s ease forwards;
-  animation-delay:0.7s;      /* ボタンは最後に表示 */
+  opacity:0.95; /* ← 常に透け感あり */
+  animation: fadeUpSoft 1s ease forwards;
+  animation-delay:0.7s;
 }
 
-/* 🍊 お試しボタン（強めのオレンジ） */
+/* 🍊 お試しボタン */
 .btn-ghost{
   background: linear-gradient(135deg, var(--primary-light), var(--primary));
   color:white;
@@ -99,7 +109,7 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
-/* 🟧 新規登録ボタン（明るめのオレンジ） */
+/* 🟧 新規登録ボタン */
 .btn-primary{
   background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
   color:white;
@@ -109,7 +119,7 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
-/* 🟧 ログインボタン（同系統カラー） */
+/* 🟧 ログインボタン（同じ色調） */
 .btn-outline{
   background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
   color:white;
@@ -122,7 +132,7 @@ html, body, [data-testid="stAppViewContainer"]{
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------------
-# 4️⃣ 背景設定（パララックス風アニメーション追加）
+# 4️⃣ 背景設定（静止）
 # ----------------------------------------------------------
 if bg_url:
     st.markdown(
@@ -133,7 +143,6 @@ if bg_url:
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            animation: bgMove 40s ease-in-out infinite alternate; /* ← 背景をゆっくり動かす */
         }}
         [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
             background: transparent;
