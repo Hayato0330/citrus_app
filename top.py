@@ -26,7 +26,7 @@ def local_image_to_data_url(path: str) -> str:
 bg_url = local_image_to_data_url("top_background.png")
 
 # ----------------------------------------------------------
-# 3️⃣ CSSデザイン（背景＋フォント＋ボタン枠）
+# 3️⃣ CSSデザイン（新規登録ボタンの色を明るく）
 # ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +36,7 @@ st.markdown("""
 :root{
   --primary:#f98006;
   --primary-light:#ffa94d;
-  --primary-dark:#d86a00;
+  --primary-lighter:#fbbf6b; /* ← 追加：より淡いオレンジ */
 }
 
 html, body, [data-testid="stAppViewContainer"]{
@@ -64,10 +64,10 @@ html, body, [data-testid="stAppViewContainer"]{
   transition: all .2s ease;
   display:inline-block;
   box-shadow:0 4px 10px rgba(0,0,0,0.08);
-  border:3px solid rgba(249,128,6,.6);   /* ← すべてのボタンに枠を追加 */
+  border:3px solid rgba(249,128,6,.6);
 }
 
-/* 🍊 お試しボタン（背景オレンジ） */
+/* 🍊 お試しボタン */
 .btn-ghost{
   background: linear-gradient(135deg, var(--primary-light), var(--primary));
   color:white;
@@ -77,9 +77,9 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 16px rgba(249,128,6,0.3);
 }
 
-/* 🟧 新規登録ボタン */
+/* 🟧 新規登録ボタン（より淡いオレンジに変更） */
 .btn-primary{
-  background:var(--primary);
+  background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
   color:white;
 }
 .btn-primary:hover{
