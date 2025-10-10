@@ -26,7 +26,7 @@ def local_image_to_data_url(path: str) -> str:
 bg_url = local_image_to_data_url("top_background.png")
 
 # ----------------------------------------------------------
-# 3️⃣ CSSデザイン
+# 3️⃣ CSSデザイン（背景＋フォント＋UIスタイル）
 # ----------------------------------------------------------
 st.markdown("""
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,21 +40,6 @@ st.markdown("""
 html, body, [data-testid="stAppViewContainer"]{
   height:100%;
   font-family: "Plus Jakarta Sans", sans-serif;
-}
-
-/* 背景 */
-.bg-wrap{
-  position:fixed; inset:0; z-index:-2;
-}
-.bg-wrap img{
-  width:100%; height:100%; object-fit:cover;
-}
-.bg-overlay{
-  position:fixed; inset:0; z-index:-1;
-  background: rgba(255,250,240,.85);
-}
-@media (prefers-color-scheme: dark){
-  .bg-overlay{ background: rgba(35,25,15,.85); }
 }
 
 /* 中央のヒーローセクション */
@@ -90,20 +75,25 @@ html, body, [data-testid="stAppViewContainer"]{
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------------
-# 4️⃣ 背景レイヤ
+# 4️⃣ 背景設定（ここが方法①）
 # ----------------------------------------------------------
 if bg_url:
-    st.markdown(f"""
-    <div class="bg-wrap">
-      <img src="{bg_url}" alt="柑橘の背景">
-    </div>
-    <div class="bg-overlay"></div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <div class="bg-wrap"></div>
-    <div class="bg-overlay"></div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stAppViewContainer"] {{
+            background: url("{bg_url}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }}
+        [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
+            background: transparent;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ----------------------------------------------------------
 # 5️⃣ メインヒーローセクション
