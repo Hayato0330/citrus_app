@@ -109,7 +109,7 @@ col1, col2 = st.columns([1, 1], gap="large")
 
 with col1:
     if st.button("🍊 お試しで推薦してもらう", use_container_width=True):
-        st.switch_page("input.py")
+        st.switch_page("pages/2_input.py")
 
 with col2:
     c1, c2 = st.columns(2)
