@@ -161,7 +161,7 @@ st.markdown("""
   <p>あなたにぴったりの品種を紹介します</p>
 
   <div style="margin-top:3rem; display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
-    <a href="https://citrusapp-stahmzy7w8xxfvwgdg6hbq.streamlit.app/" class="btn btn-ghost">🍊 お試しで推薦してもらう</a>
+    <a href="https://citrusapp-stahmzy7w8xxfvwgdg6hbq.streamlit.app/" target="_self" class="btn btn-ghost">🍊 お試しで推薦してもらう</a>
     <div style="display:flex; flex-direction:column; gap:1.5rem; min-width:14rem;">
       <a href="#signup" class="btn btn-primary">新規登録</a>
       <a href="#login" class="btn btn-outline">ログイン</a>
