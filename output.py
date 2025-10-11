@@ -88,7 +88,7 @@ if ranked is None:
 
 
 # ===== 認証状態チェック =====
-is_logged_in = False  # 単体テスト用なので常にログイン済み
+is_logged_in = True  # 単体テスト用なので常にログイン済み
 
 
 # ===== UI =====
