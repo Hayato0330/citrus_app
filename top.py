@@ -45,11 +45,14 @@ html, body, [data-testid="stAppViewContainer"]{
 }
 
 /* ------------------ アニメーション定義 ------------------ */
+
+/* タイトルや説明文のフェードアップ（完全に表示） */
 @keyframes fadeUpFull {
   0% { opacity: 0; transform: translateY(30px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
+/* ボタン用のフェードアップ（透け感を保つ） */
 @keyframes fadeUpSoft {
   0% { opacity: 0; transform: translateY(30px); }
   100% { opacity: 0.95; transform: translateY(0); }
@@ -91,7 +94,7 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 6px 14px rgba(0,0,0,0.1);
   border:3px solid rgba(249,128,6,.5);
   min-width: 14rem;
-  opacity:0.95;
+  opacity:0.95; /* ← 常に透け感あり */
   animation: fadeUpSoft 1s ease forwards;
   animation-delay:0.7s;
 }
@@ -116,7 +119,7 @@ html, body, [data-testid="stAppViewContainer"]{
   box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
 
-/* 🟧 ログインボタン */
+/* 🟧 ログインボタン（同じ色調） */
 .btn-outline{
   background: linear-gradient(135deg, var(--primary-lighter), var(--primary-light));
   color:white;
@@ -129,7 +132,7 @@ html, body, [data-testid="stAppViewContainer"]{
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------------
-# 4️⃣ 背景設定（CSSで固定表示）
+# 4️⃣ 背景設定（静止）
 # ----------------------------------------------------------
 if bg_url:
     st.markdown(
@@ -150,7 +153,7 @@ if bg_url:
     )
 
 # ----------------------------------------------------------
-# 5️⃣ メインヒーローセクション（外部URLリンク付き）
+# 5️⃣ メインヒーローセクション
 # ----------------------------------------------------------
 st.markdown("""
 <div class="hero">
@@ -158,11 +161,7 @@ st.markdown("""
   <p>あなたにぴったりの品種を紹介します</p>
 
   <div style="margin-top:3rem; display:flex; flex-wrap:wrap; gap:2rem; justify-content:center;">
-    <!-- 外部リンク：別のStreamlitアプリ -->
-    <a href="https://citrusapp-stahmzy7w8xxfvwgdg6hbq.streamlit.app/" target="_self" class="btn btn-ghost">
-      🍊 お試しで推薦してもらう
-    </a>
-
+    <a href="https://citrusapp-stahmzy7w8xxfvwgdg6hbq.streamlit.app/" class="btn btn-ghost">🍊 お試しで推薦してもらう</a>
     <div style="display:flex; flex-direction:column; gap:1.5rem; min-width:14rem;">
       <a href="#signup" class="btn btn-primary">新規登録</a>
       <a href="#login" class="btn btn-outline">ログイン</a>
