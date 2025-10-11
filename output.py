@@ -53,18 +53,17 @@ def build_amazon_url(name: str) -> str:
     query = quote(f"{name} 生果 フルーツ -苗 -苗木 -のぼり -ジュース -ゼリー -缶 -本")
     return f"https://www.amazon.co.jp/s?k={query}&i=grocery"
 
-
 def build_rakuten_url(name: str) -> str:
     return f"https://search.rakuten.co.jp/search/mall/{quote(name)}/"
-
 
 def build_satofuru_url(name: str) -> str:
     return f"https://www.satofull.jp/search/?q={quote(name)}"
 
-
 def build_twitter_share(names: list[str]) -> str:
     text = quote(f"おすすめの柑橘: {', '.join(names)} #柑橘おすすめ")
-    return f"https://twitter.com/intent/tweet?text={text}"
+    share_url = st.secrets.get("public_app_url", "")
+    url_query = f"&url={quote(share_url)}" if share_url else ""
+    return f"https://twitter.com/intent/tweet?text={text}{url_query}"
 
 
 # ===== ページ設定 =====
