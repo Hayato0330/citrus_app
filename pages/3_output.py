@@ -30,21 +30,41 @@ body {
     color: #f59e0b; /* マッチ度はオレンジ */
     font-weight: bold;
 }
+
+/* 共通ボタン */
 .link-btn {
     display: inline-block;
     padding: 8px 14px;
     margin: 6px 0;
     border-radius: 6px;
-    background: #22c55e;
     color: #fff !important;
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
     transition: opacity .15s;
 }
-.link-btn:hover {
-    opacity: .9;
+.link-btn img {
+    height:16px;
+    vertical-align:middle;
+    margin-right:6px;
 }
+.link-btn:hover { opacity: .9; }
+
+/* ブランドカラー */
+.amazon-btn { background-color: #FF9900; }
+.amazon-btn:hover { background-color: #e68a00; }
+
+.rakuten-btn { background-color: #BF0000; }
+.rakuten-btn:hover { background-color: #990000; }
+
+.satofuru-btn { background-color: #D2691E; }
+.satofuru-btn:hover { background-color: #b85c19; }
+
+.x-btn { background-color: #000000; }
+.x-btn:hover { background-color: #222222; }
+
+.register-btn { background-color: #2563eb; }
+.register-btn:hover { background-color: #1d4ed8; }
 </style>
 """), unsafe_allow_html=True)
 
@@ -69,13 +89,20 @@ def score_items(df: pd.DataFrame, user_vec: np.ndarray,
     Xn = np.array([normalize(x) for x in X])
     scores = Xn @ user_vec
 
-    if season_pref and "season" in df.columns:
+    if "season" in df.columns and season_pref:
         mask = df["season"].astype(str).str.contains(season_pref)
         scores = scores + mask.astype(float) * season_boost
 
     out = df.copy()
     out["score"] = scores
     return out.sort_values("score", ascending=False).reset_index(drop=True)
+
+
+# ===== シェア関数 =====
+def build_twitter_share(names: list[str]) -> str:
+    ranked_text = "\n".join([f"{i+1}位 {name}" for i, name in enumerate(names)])
+    text = quote(f"おすすめの柑橘 🍊\n{ranked_text}\n#柑橘おすすめ")
+    return f"https://twitter.com/intent/tweet?text={text}"
 
 
 # ===== データ取得 =====
@@ -113,7 +140,6 @@ st.markdown("### 🍊 柑橘おすすめ診断 - 結果（ログインなし）"
 
 top_items = ranked.head(TOPK)
 
-# 四象限レイアウト
 cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
@@ -130,16 +156,26 @@ def render_card(idx: int, row):
       <h2>{idx}. {name}</h2>
       <div style="display:flex;gap:20px;align-items:flex-start;">
         <div style="flex:1;">
-          <div style="padding:10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;margin-bottom:10px;">
-            <p style="margin:0;color:#333;font-size:14px;">{desc}</p>
-          </div>
+          <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
           <p style="margin:6px 0;">マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
+          <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
         <div style="flex:1;text-align:center;">
-          <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 Amazon</a><br>
-          <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 楽天</a><br>
-          <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 さとふる</a>
-          <p style="font-size:12px;color:#666;margin-top:8px;">※利用には新規登録が必要です</p>
+          <a class="link-btn amazon-btn" href="pages/2_Register.py" target="_self">
+            🔒 <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon">
+            Amazon
+          </a><br>
+          <a class="link-btn rakuten-btn" href="pages/2_Register.py" target="_self">
+            🔒 <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
+            楽天
+          </a><br>
+          <a class="link-btn satofuru-btn" href="pages/2_Register.py" target="_self">
+            🔒 <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
+            さとふる
+          </a>
+          <p style="font-size:13px;color:#666;margin-top:10px;">
+            Amazon・楽天・さとふるの利用にはアカウント登録が必要です
+          </p>
         </div>
       </div>
     </div>
@@ -155,13 +191,18 @@ for idx, row in enumerate(top_items.itertuples(), start=1):
 # === 右下「まとめ」ブロック ===
 with quadrants[3]:
     names = [getattr(r, "Item_name", "不明") for r in top_items.itertuples()]
-    text = quote("おすすめの柑橘 🍊\n" + "\n".join([f"{i+1}位 {n}" for i, n in enumerate(names)]) + "\n#柑橘おすすめ")
-    twitter_url = f"https://twitter.com/intent/tweet?text={text}"
-
+    twitter_url = build_twitter_share(names)
     st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
-      <a class="link-btn" href="{twitter_url}" target="_blank">Xでシェアする</a>
+      <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg" alt="X">
+        Xでシェアする
+      </a>
+      <br>
+      <a class="link-btn register-btn" href="pages/2_Register.py" target="_self">
+        🔑 新規登録はこちら
+      </a>
     </div>
     """, unsafe_allow_html=True)
 
