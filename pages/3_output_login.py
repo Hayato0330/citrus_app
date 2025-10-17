@@ -12,7 +12,7 @@ st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="�
 st.markdown(textwrap.dedent("""
 <style>
 body {
-    background-color: #FFF8F0; /* 薄オレンジ背景 */
+    background-color: #FFF8F0;
 }
 .card {
     background-color: #ffffff;
@@ -23,15 +23,15 @@ body {
     border: 1px solid #eee;
 }
 .card h2, .card h3 {
-    color: #000;  /* 品種名や見出しは黒 */
+    color: #000;
     margin-top: 0;
 }
 .match-score {
-    color: #f59e0b; /* マッチ度はオレンジ */
+    color: #f59e0b;
     font-weight: bold;
 }
 
-/* 各サービス専用ボタン */
+/* 共通ボタン */
 .link-btn {
     display: inline-block;
     padding: 8px 14px;
@@ -150,6 +150,18 @@ def render_card(idx: int, row):
     image_url = getattr(row, "image_path", None) or "https://via.placeholder.com/200x150?text=No+Image"
     score_pct = float(getattr(row, "score", 0.0)) * 100.0
 
+    links_html = f"""
+      <a class="link-btn amazon-btn" href="https://www.amazon.co.jp" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg">Amazonで見る
+      </a><br>
+      <a class="link-btn rakuten-btn" href="https://www.rakuten.co.jp" target="_blank">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg">楽天で見る
+      </a><br>
+      <a class="link-btn satofuru-btn" href="https://www.satofull.jp" target="_blank">
+        <img src="https://www.satofull.jp/favicon.ico">さとふるで見る
+      </a>
+    """
+
     html = f"""
     <div class="card">
       <h2>{idx}. {name}</h2>
@@ -159,20 +171,7 @@ def render_card(idx: int, row):
           <p style="margin:6px 0;">マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
           <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
-        <div style="flex:1;text-align:center;">
-          <a class="link-btn amazon-btn" href="https://www.amazon.co.jp" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon">
-            Amazonで見る
-          </a><br>
-          <a class="link-btn rakuten-btn" href="https://www.rakuten.co.jp" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
-            楽天で見る
-          </a><br>
-          <a class="link-btn satofuru-btn" href="https://www.satofull.jp" target="_blank">
-            <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
-            さとふるで見る
-          </a>
-        </div>
+        <div style="flex:1;text-align:center;">{links_html}</div>
       </div>
     </div>
     """
@@ -192,8 +191,7 @@ with quadrants[3]:
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg" alt="X">
-        Xでシェアする
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg">Xでシェアする
       </a>
     </div>
     """, unsafe_allow_html=True)
