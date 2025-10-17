@@ -1,134 +1,165 @@
+# output_nologin.py
 import streamlit as st
 import numpy as np
 import pandas as pd
 from urllib.parse import quote
+import textwrap
+
+# ===== ページ設定 =====
+st.set_page_config(page_title="柑橘おすすめ診断 - 結果（ログインなし）", page_icon="🍊", layout="wide")
+
+# ===== CSS =====
+st.markdown(textwrap.dedent("""
+<style>
+body {
+    background-color: #FFF8F0; /* 薄オレンジ背景 */
+}
+.card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    border: 1px solid #eee;
+}
+.card h2, .card h3 {
+    color: #000;  /* 品種名や見出しは黒 */
+    margin-top: 0;
+}
+.match-score {
+    color: #f59e0b; /* マッチ度はオレンジ */
+    font-weight: bold;
+}
+.link-btn {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 6px 0;
+    border-radius: 6px;
+    background: #22c55e;
+    color: #fff !important;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: opacity .15s;
+}
+.link-btn:hover {
+    opacity: .9;
+}
+</style>
+"""), unsafe_allow_html=True)
 
 
-# ===== データ処理用関数 =====
+# ===== データ処理関数 =====
 def load_data(csv_path: str) -> pd.DataFrame | None:
-    """特徴量CSVを読み込む。失敗したら None を返す。"""
     try:
         return pd.read_csv(csv_path)
-    except Exception as e:
-        st.error(f"CSVの読み込みに失敗しました: {e}")
+    except Exception:
         return None
 
-
-def score_items(
-    df: pd.DataFrame,
-    user_vec: np.ndarray,
-    season_pref: str = "",
-    season_boost: float = 0.03,
-) -> pd.DataFrame:
-    """ユーザーの入力ベクトルと特徴量からスコアを計算する（簡易版：コサイン類似度）"""
+def score_items(df: pd.DataFrame, user_vec: np.ndarray,
+                season_pref: str = "", season_boost: float = 0.03) -> pd.DataFrame:
     feature_cols = ["brix", "acid", "bitter", "smell", "moisture", "elastic"]
-
-    # 特徴量が足りない場合は処理中止
-    for col in feature_cols:
-        if col not in df.columns:
-            st.error(f"CSVに必要なカラムがありません: {col}")
-            st.stop()
+    if not all(col in df.columns for col in feature_cols):
+        st.error("CSVに必要な特徴量カラムが不足しています。")
+        st.stop()
 
     X = df[feature_cols].astype(float).values
-
-    def normalize(v):
-        return v / (np.linalg.norm(v) + 1e-8)
-
+    def normalize(v): return v / (np.linalg.norm(v) + 1e-8)
     user_vec = normalize(user_vec)
-    X_norm = np.array([normalize(x) for x in X])
-
-    scores = X_norm @ user_vec
+    Xn = np.array([normalize(x) for x in X])
+    scores = Xn @ user_vec
 
     if season_pref and "season" in df.columns:
         mask = df["season"].astype(str).str.contains(season_pref)
         scores = scores + mask.astype(float) * season_boost
 
-    df = df.copy()
-    df["score"] = scores
-    return df.sort_values("score", ascending=False).reset_index(drop=True)
-
-
-# ===== ユーティリティ =====
-def build_amazon_url(name: str) -> str:
-    query = quote(f"{name} 生果 フルーツ -苗 -苗木 -のぼり -ジュース -ゼリー -缶 -本")
-    return f"https://www.amazon.co.jp/s?k={query}&i=grocery"
-
-def build_rakuten_url(name: str) -> str:
-    return f"https://search.rakuten.co.jp/search/mall/{quote(name)}/"
-
-def build_satofuru_url(name: str) -> str:
-    return f"https://www.satofull.jp/search/?q={quote(name)}"
-
-def build_twitter_share(names: list[str]) -> str:
-    text = quote(f"おすすめの柑橘: {', '.join(names)} #柑橘おすすめ")
-    share_url = st.secrets.get("public_app_url", "")
-    url_query = f"&url={quote(share_url)}" if share_url else ""
-    return f"https://twitter.com/intent/tweet?text={text}{url_query}"
-
-
-# ===== ページ設定 =====
-st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
+    out = df.copy()
+    out["score"] = scores
+    return out.sort_values("score", ascending=False).reset_index(drop=True)
 
 
 # ===== データ取得 =====
 ranked = st.session_state.get("ranked_results", None)
-topk = 3
+TOPK = 3
 
 if ranked is None:
     df = load_data("citrus_features.csv")
     if df is None:
-        st.stop()  # CSVがないなら終了
+        # ダミーデータ
+        df = pd.DataFrame({
+            "Item_name": ["温州みかん", "ポンカン", "はっさく"],
+            "brix": [5, 4, 3],
+            "acid": [2, 3, 4],
+            "bitter": [1, 2, 3],
+            "smell": [3, 4, 2],
+            "moisture": [5, 4, 3],
+            "elastic": [2, 3, 4],
+            "season": ["冬", "冬〜春", "春"],
+            "description": ["甘くて食べやすい定番みかん", "香り豊かで人気の柑橘", "さっぱりとした味わい"],
+            "image_path": [
+                "https://via.placeholder.com/200x150?text=Mikan",
+                "https://via.placeholder.com/200x150?text=Ponkan",
+                "https://via.placeholder.com/200x150?text=Hassaku",
+            ]
+        })
 
-    # 固定のダミーユーザーベクトル
     user_vec = np.array([2, 3, 2, 3, 4, 5], dtype=float)
-    season_pref = ""
-
-    ranked = score_items(df, user_vec, season_pref=season_pref, season_boost=0.03)
+    ranked = score_items(df, user_vec, season_pref="", season_boost=0.03)
     st.session_state.ranked_results = ranked
 
 
-# ===== 認証状態チェック =====
-is_logged_in = True  # 単体テスト用なので常にログイン済み
-
-
 # ===== UI =====
-st.title("🍊 あなたにおすすめの柑橘")
+st.markdown("### 🍊 柑橘おすすめ診断 - 結果（ログインなし）")
 
-top_items = ranked.head(topk)
-cols = st.columns(2)  # 2×2 グリッド用
+top_items = ranked.head(TOPK)
+
+# 四象限レイアウト
+cols_top = st.columns(2)
+cols_bottom = st.columns(2)
+quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
+
+
+def render_card(idx: int, row):
+    name = getattr(row, "Item_name", "不明")
+    desc = getattr(row, "description", "")
+    image_url = getattr(row, "image_path", None) or "https://via.placeholder.com/200x150?text=No+Image"
+    score_pct = float(getattr(row, "score", 0.0)) * 100.0
+
+    html = f"""
+    <div class="card">
+      <h2>{idx}. {name}</h2>
+      <div style="display:flex;gap:20px;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="padding:10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;margin-bottom:10px;">
+            <p style="margin:0;color:#333;font-size:14px;">{desc}</p>
+          </div>
+          <p style="margin:6px 0;">マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 Amazon</a><br>
+          <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 楽天</a><br>
+          <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 さとふる</a>
+          <p style="font-size:12px;color:#666;margin-top:8px;">※外部リンクは登録ユーザー限定です</p>
+        </div>
+      </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 
 for idx, row in enumerate(top_items.itertuples(), start=1):
-    with cols[(idx - 1) % 2]:
-        st.markdown(f"## {idx}. {getattr(row, 'Item_name', '不明')}")
-
-        left, right = st.columns([1, 1])
-
-        with left:
-            # 画像URLが無ければダミーを利用
-            image_url = getattr(row, "image_url", None) or "https://via.placeholder.com/200x150?text=No+Image"
-            st.image(image_url, use_container_width=True)
-
-            match_percent = f"{row.score*100:.1f}%"
-            st.markdown(
-                f"**マッチ度:** <span style='color:#f59e0b;'>{match_percent}</span>",
-                unsafe_allow_html=True,
-            )
-            st.caption(f"季節: {getattr(row, 'season', '-')}")
-
-        with right:
-            if is_logged_in:
-                st.markdown(f"[Amazonで見る]({build_amazon_url(getattr(row, 'Item_name', '不明'))})")
-                st.markdown(f"[楽天で見る]({build_rakuten_url(getattr(row, 'Item_name', '不明'))})")
-                st.markdown(f"[さとふるで見る]({build_satofuru_url(getattr(row, 'Item_name', '不明'))})")
-            else:
-                st.warning("🔒 外部リンクはログインが必要です")
+    with quadrants[idx - 1]:
+        render_card(idx, row)
 
 
 # === 右下「まとめ」ブロック ===
-with cols[1]:
-    st.markdown("## まとめ")
-    citrus_names = [getattr(r, "Item_name", "不明") for r in top_items.itertuples()]
-    twitter_url = build_twitter_share(citrus_names)
-    st.markdown(f"[Xでシェア]({twitter_url})", unsafe_allow_html=True)
+with quadrants[3]:
+    st.markdown("""
+    <div class="card" style="text-align:center;">
+      <h3>まとめ</h3>
+      <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 Xでシェアする</a>
+      <p style="font-size:12px;color:#666;margin-top:8px;">※シェア機能は登録ユーザー限定です</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.caption("※ マッチ度は嗜好との近さを % 表記。季節一致がある場合は加点されます。")
