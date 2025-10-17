@@ -89,8 +89,25 @@ topk = 3
 
 if ranked is None:
     df = load_data("citrus_features.csv")
+
     if df is None:
-        st.stop()
+        # --- ダミーデータを用意 ---
+        df = pd.DataFrame({
+            "Item_name": ["温州みかん", "ポンカン", "はっさく"],
+            "brix": [5, 4, 3],
+            "acid": [2, 3, 4],
+            "bitter": [1, 2, 3],
+            "smell": [3, 4, 2],
+            "moisture": [5, 4, 3],
+            "elastic": [2, 3, 4],
+            "season": ["冬", "冬〜春", "春"],
+            "description": ["甘くて食べやすい定番みかん", "香り豊かで人気の柑橘", "さっぱりとした味わい"],
+            "image_path": [
+                "https://via.placeholder.com/200x150?text=Mikan",
+                "https://via.placeholder.com/200x150?text=Ponkan",
+                "https://via.placeholder.com/200x150?text=Hassaku",
+            ]
+        })
 
     # ダミー入力ベクトル
     user_vec = np.array([2, 3, 2, 3, 4, 5], dtype=float)
