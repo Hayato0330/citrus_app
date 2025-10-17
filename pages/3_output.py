@@ -139,7 +139,7 @@ def render_card(idx: int, row):
           <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 Amazon</a><br>
           <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 楽天</a><br>
           <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 さとふる</a>
-          <p style="font-size:12px;color:#666;margin-top:8px;">※外部リンクは登録ユーザー限定です</p>
+          <p style="font-size:12px;color:#666;margin-top:8px;">※利用には新規登録が必要です</p>
         </div>
       </div>
     </div>
@@ -154,11 +154,14 @@ for idx, row in enumerate(top_items.itertuples(), start=1):
 
 # === 右下「まとめ」ブロック ===
 with quadrants[3]:
-    st.markdown("""
+    names = [getattr(r, "Item_name", "不明") for r in top_items.itertuples()]
+    text = quote("おすすめの柑橘 🍊\n" + "\n".join([f"{i+1}位 {n}" for i, n in enumerate(names)]) + "\n#柑橘おすすめ")
+    twitter_url = f"https://twitter.com/intent/tweet?text={text}"
+
+    st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
-      <a class="link-btn" href="pages/2_Register.py" target="_self">🔒 Xでシェアする</a>
-      <p style="font-size:12px;color:#666;margin-top:8px;">※シェア機能は登録ユーザー限定です</p>
+      <a class="link-btn" href="{twitter_url}" target="_blank">Xでシェアする</a>
     </div>
     """, unsafe_allow_html=True)
 
