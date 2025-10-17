@@ -10,12 +10,9 @@ st.set_page_config(page_title="柑橘おすすめ診断 - 結果（ログイン�
 # ===== CSS =====
 st.markdown(textwrap.dedent("""
 <style>
-/* 全体背景 */
 body {
-    background-color: #FFF8F0; /* 薄オレンジ背景 */
+    background-color: #FFF8F0;
 }
-
-/* カードデザイン */
 .card {
     background-color: #ffffff;
     border-radius: 12px;
@@ -24,18 +21,8 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,.12);
     border: 1px solid #eee;
 }
-.card h2, .card h3 {
-    color: #000;
-    margin-top: 0;
-}
-
-/* マッチ度 */
-.match-score {
-    color: #f59e0b;
-    font-weight: bold;
-}
-
-/* 共通ボタン */
+.card h2, .card h3 { color: #000; margin-top: 0; }
+.match-score { color: #f59e0b; font-weight: bold; }
 .link-btn {
     display: inline-block;
     padding: 8px 14px;
@@ -53,20 +40,13 @@ body {
     vertical-align: middle;
     margin-right: 6px;
 }
-.link-btn:hover {
-    opacity: .9;
-}
-
-/* ブランドごとのカラー */
-.amazon-btn { background-color: #000000; }  /* 黒背景 + 白ロゴ */
+.link-btn:hover { opacity: .9; }
+.amazon-btn { background-color: #000000; }
 .amazon-btn:hover { background-color: #222222; }
-
 .rakuten-btn { background-color: #BF0000; }
 .rakuten-btn:hover { background-color: #990000; }
-
 .satofuru-btn { background-color: #D2691E; }
 .satofuru-btn:hover { background-color: #b85c19; }
-
 .x-btn { background-color: #000000; }
 .x-btn:hover { background-color: #222222; }
 </style>
@@ -75,7 +55,6 @@ body {
 
 # ===== データ処理関数 =====
 def load_data(csv_path: str) -> pd.DataFrame | None:
-    """CSV読み込み（失敗時はNone）"""
     try:
         return pd.read_csv(csv_path)
     except Exception:
@@ -83,20 +62,17 @@ def load_data(csv_path: str) -> pd.DataFrame | None:
 
 def score_items(df: pd.DataFrame, user_vec: np.ndarray,
                 season_pref: str = "", season_boost: float = 0.03) -> pd.DataFrame:
-    """コサイン類似度でマッチ度を計算"""
     feature_cols = ["brix", "acid", "bitter", "smell", "moisture", "elastic"]
     if not all(col in df.columns for col in feature_cols):
         st.error("CSVに必要な特徴量カラムが不足しています。")
         st.stop()
 
     X = df[feature_cols].astype(float).values
-
     def normalize(v): return v / (np.linalg.norm(v) + 1e-8)
     user_vec = normalize(user_vec)
     X_norm = np.array([normalize(x) for x in X])
     scores = X_norm @ user_vec
 
-    # 季節一致補正
     if season_pref and "season" in df.columns:
         mask = df["season"].astype(str).str.contains(season_pref)
         scores += mask.astype(float) * season_boost
@@ -106,9 +82,20 @@ def score_items(df: pd.DataFrame, user_vec: np.ndarray,
     return out.sort_values("score", ascending=False).reset_index(drop=True)
 
 
+# ===== 外部リンク生成関数（復活版） =====
+def build_amazon_url(name: str) -> str:
+    q = quote(f"{name} 生果 フルーツ -苗 -苗木 -のぼり -ジュース -ゼリー -缶 -本")
+    return f"https://www.amazon.co.jp/s?k={q}&i=grocery"
+
+def build_rakuten_url(name: str) -> str:
+    return f"https://search.rakuten.co.jp/search/mall/{quote(name)}/"
+
+def build_satofuru_url(name: str) -> str:
+    return f"https://www.satofull.jp/search/?q={quote(name)}"
+
+
 # ===== SNSシェア =====
 def build_twitter_share(names: list[str]) -> str:
-    """順位付きでツイート内容を構成"""
     ranked_text = "\n".join([f"{i+1}位 {n}" for i, n in enumerate(names)])
     text = quote(f"おすすめの柑橘 🍊\n{ranked_text}\n#柑橘おすすめ")
     share_url = st.secrets.get("public_app_url", "")
@@ -123,7 +110,6 @@ TOPK = 3
 if ranked is None:
     df = load_data("citrus_features.csv")
     if df is None:
-        # ダミーデータ
         df = pd.DataFrame({
             "Item_name": ["温州みかん", "ポンカン", "はっさく"],
             "brix": [5, 4, 3],
@@ -156,7 +142,6 @@ quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
 
 def render_card(i, row):
-    """品種カードのレンダリング"""
     name = getattr(row, "Item_name", "不明")
     desc = getattr(row, "description", "")
     image_url = getattr(row, "image_path", None) or "https://via.placeholder.com/200x150?text=No+Image"
@@ -166,22 +151,23 @@ def render_card(i, row):
     <div class="card">
       <h2>{i}. {name}</h2>
       <div style="display:flex;gap:20px;align-items:flex-start;">
-        <!-- 左列 -->
         <div style="flex:1;">
           <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
           <p>マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
           <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
-        <!-- 右列（有効なリンク） -->
         <div style="flex:1;text-align:center;">
-          <a class="link-btn amazon-btn" href="https://www.amazon.co.jp" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo_white.svg" alt="Amazon">Amazonで見る
+          <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo_white.svg" alt="Amazon">
+            Amazonで見る
           </a><br>
-          <a class="link-btn rakuten-btn" href="https://www.rakuten.co.jp" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">楽天で見る
+          <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
+            楽天で見る
           </a><br>
-          <a class="link-btn satofuru-btn" href="https://www.satofull.jp" target="_blank">
-            <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">さとふるで見る
+          <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">
+            <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
+            さとふるで見る
           </a>
         </div>
       </div>
@@ -190,12 +176,10 @@ def render_card(i, row):
     st.markdown(html, unsafe_allow_html=True)
 
 
-# 品種カードを配置
 for i, row in enumerate(top_items.itertuples(), start=1):
     with quadrants[i - 1]:
         render_card(i, row)
 
-# === 右下「まとめ」 ===
 with quadrants[3]:
     names = [getattr(r, "Item_name", "不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
