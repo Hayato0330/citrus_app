@@ -190,10 +190,13 @@ with quadrants[3]:
     st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
-      <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg">Xでシェアする
+      <a class="link-btn x-btn" href="{twitter_url}" target="_blank" rel="noopener">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg"
+             alt="X" style="height:16px;vertical-align:middle;margin-right:6px;">
+        Xでシェア
       </a>
     </div>
     """, unsafe_allow_html=True)
+
 
 st.caption("※ マッチ度は嗜好との近さを % 表記。季節一致がある場合は加点されます。")

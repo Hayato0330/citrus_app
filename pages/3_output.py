@@ -176,22 +176,28 @@ for idx, row in enumerate(top_items.itertuples(), start=1):
         render_card(idx, row)
 
 
+
 # === 右下「まとめ」ブロック ===
+# 第4象限：まとめ（Xは有効、ショップは無効）
 with quadrants[3]:
     names = [getattr(r, "Item_name", "不明") for r in top_items.itertuples()]
-    twitter_url = build_twitter_share(names)
+    x_url = build_twitter_share(names)
     st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
-      <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg">Xでシェアする
+      <a class="link-btn x-btn" href="{x_url}" target="_blank" rel="noopener">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg"
+             alt="X" style="height:16px;vertical-align:middle;margin-right:6px;">
+        Xでシェア
       </a>
       <p style="margin-top:15px;">
-        <a href="pages/2_Register.py" style="color:#007BFF;text-decoration:underline;font-size:14px;">
+        <a href="pages/2_Register.py" style="color:#2563eb;text-decoration:underline;font-size:14px;">
           ➡ 新規登録はこちら
         </a>
       </p>
     </div>
     """, unsafe_allow_html=True)
+
+
 
 st.caption("※ ゲスト表示ではショップリンクは利用できません。アカウント登録後に有効になります。")
