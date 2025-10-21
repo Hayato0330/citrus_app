@@ -10,9 +10,12 @@ st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="�
 # ===== CSS =====
 st.markdown(textwrap.dedent("""
 <style>
+/* ===== 背景設定 ===== */
 body {
     background-color: #FFF8F0; /* 薄オレンジ背景 */
 }
+
+/* ===== カード ===== */
 .card {
     background-color: #ffffff;
     border-radius: 12px;
@@ -25,12 +28,14 @@ body {
     color: #000;
     margin-top: 0;
 }
+
+/* ===== マッチ度 ===== */
 .match-score {
     color: #f59e0b;
     font-weight: bold;
 }
 
-/* 共通ボタン */
+/* ===== 共通ボタン ===== */
 .link-btn {
     display: inline-block;
     padding: 8px 14px;
@@ -48,28 +53,30 @@ body {
     vertical-align: middle;
     margin-right: 6px;
 }
-.link-btn:hover { opacity: .9; }
+.link-btn:hover {
+    opacity: .9;
+}
 
-/* 無効化ボタン */
+/* ===== 無効化ボタン ===== */
 .disabled-btn {
     opacity: 0.6 !important;
     cursor: not-allowed !important;
     pointer-events: none !important;
 }
 
-/* ブランドカラー */
-.amazon-btn { background-color: #000000; }
+/* ===== ブランドカラー ===== */
+.amazon-btn { background-color: #00BFFF; }
 .rakuten-btn { background-color: #BF0000; }
 .satofuru-btn { background-color: #D2691E; }
 .x-btn { background-color: #000000; }
 
-.amazon-btn:hover { background-color: #222222; }
+/* ===== ブランドカラー hover ===== */
+.amazon-btn:hover { background-color: #87CEEB; }
 .rakuten-btn:hover { background-color: #990000; }
 .satofuru-btn:hover { background-color: #b85c19; }
 .x-btn:hover { background-color: #222222; }
 </style>
 """), unsafe_allow_html=True)
-
 
 # ===== データ処理関数 =====
 def load_data(csv_path: str) -> pd.DataFrame | None:

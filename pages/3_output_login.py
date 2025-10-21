@@ -10,9 +10,12 @@ st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="�
 # ===== CSS =====
 st.markdown(textwrap.dedent("""
 <style>
+/* ===== 背景設定 ===== */
 body {
-    background-color: #FFF8F0;
+    background-color: #FFF8F0; /* 薄オレンジ背景 */
 }
+
+/* ===== カード ===== */
 .card {
     background-color: #ffffff;
     border-radius: 12px;
@@ -21,8 +24,18 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,.12);
     border: 1px solid #eee;
 }
-.card h2, .card h3 { color: #000; margin-top: 0; }
-.match-score { color: #f59e0b; font-weight: bold; }
+.card h2, .card h3 {
+    color: #000;
+    margin-top: 0;
+}
+
+/* ===== マッチ度 ===== */
+.match-score {
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+/* ===== 共通ボタン ===== */
 .link-btn {
     display: inline-block;
     padding: 8px 14px;
@@ -40,17 +53,24 @@ body {
     vertical-align: middle;
     margin-right: 6px;
 }
-.link-btn:hover { opacity: .9; }
-.amazon-btn { background-color: #000000; }
-.amazon-btn:hover { background-color: #222222; }
+.link-btn:hover {
+    opacity: .9;
+}
+
+/* ===== ブランドカラー ===== */
+.amazon-btn { background-color: #00BFFF; }
 .rakuten-btn { background-color: #BF0000; }
-.rakuten-btn:hover { background-color: #990000; }
 .satofuru-btn { background-color: #D2691E; }
-.satofuru-btn:hover { background-color: #b85c19; }
 .x-btn { background-color: #000000; }
+
+/* ===== ブランドカラー hover ===== */
+.amazon-btn:hover { background-color: #87CEEB; }
+.rakuten-btn:hover { background-color: #990000; }
+.satofuru-btn:hover { background-color: #b85c19; }
 .x-btn:hover { background-color: #222222; }
 </style>
 """), unsafe_allow_html=True)
+
 
 
 # ===== データ処理関数 =====
