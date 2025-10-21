@@ -5,7 +5,7 @@ from urllib.parse import quote
 import textwrap
 
 # ===== ページ設定 =====
-st.set_page_config(page_title="柑橘おすすめ診断 - 結果（ログイン）", page_icon="🍊", layout="wide")
+st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
 # ===== CSS =====
 st.markdown(textwrap.dedent("""
@@ -158,15 +158,17 @@ def render_card(i, row):
         </div>
         <div style="flex:1;text-align:center;">
           <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo_white.svg" alt="Amazon">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" style="height:16px;vertical-align:middle;margin-right:6px;">
             Amazonで見る
           </a><br>
           <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg"
+                 alt="Rakuten" style="height:16px;vertical-align:middle;margin-right:6px;">
             楽天で見る
           </a><br>
           <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">
-            <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
+            <img src="https://www.satofull.jp/favicon.ico"
+                 alt="さとふる" style="height:16px;vertical-align:middle;margin-right:6px;">
             さとふるで見る
           </a>
         </div>
@@ -187,7 +189,7 @@ with quadrants[3]:
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/X_logo_2023.svg"
+        <img src="https://abs.twimg.com/favicons/twitter.2.ico"
              alt="X" style="height:16px;vertical-align:middle;margin-right:6px;">
         Xでシェア
       </a>
