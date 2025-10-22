@@ -68,13 +68,13 @@ body {
 .amazon-btn { background-color: #00BFFF; }
 .rakuten-btn { background-color: #BF0000; }
 .satofuru-btn { background-color: #D2691E; }
-.x-btn { background-color: #000000; }
+.x-btn { background-color: #2b2b2b; }
 
 /* ===== ブランドカラー hover ===== */
 .amazon-btn:hover { background-color: #87CEEB; }
 .rakuten-btn:hover { background-color: #990000; }
 .satofuru-btn:hover { background-color: #b85c19; }
-.x-btn:hover { background-color: #222222; }
+.x-btn:hover { background-color: #3c3c3c; }
 </style>
 """), unsafe_allow_html=True)
 
@@ -202,7 +202,7 @@ with quadrants[3]:
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://abs.twimg.com/favicons/twitter.2.ico"
+        <img src="https://cdn.cms-twdigitalassets.com/content/dam/about-twitter/x/brand-toolkit/logo-black.png.twimg.2560.png"
              alt="X" style="height:16px;vertical-align:middle;margin-right:6px;">
         Xでシェア
       </a>
