@@ -134,7 +134,7 @@ def build_twitter_share(names: list[str]) -> str:
     url_query = f"&url={quote(share_url)}" if share_url else ""
 
     # 完全な共有リンクを返す
-    return f"https://twitter.com/intent/tweet?text={text}{url_query}"
+    return f"https://twitter.com/intent/tweet?text={text}\n{url_query}"
 
 
 
