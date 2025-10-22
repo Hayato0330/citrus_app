@@ -124,17 +124,11 @@ def build_satofuru_url(name: str) -> str:
 # ===== SNSシェア =====
 def build_twitter_share(names: list[str]) -> str:
     ranked_text = "\n".join([f"{i+1}位 {n}" for i, n in enumerate(names)])
-    text = quote(f"おすすめの柑橘 🍊\n{ranked_text}\n#柑橘おすすめ")
+    app_url = "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
+    # ツイート本文に直接リンクを改行付きで埋め込む
+    text = quote(f"おすすめの柑橘 🍊\n{ranked_text}\n#柑橘おすすめ\n{app_url}")
+    return f"https://twitter.com/intent/tweet?text={text}"
 
-    # secretsに設定されていない場合の安全なフォールバックURL
-    default_url = "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
-    share_url = st.secrets.get("public_app_url", default_url)
-
-    # URLクエリを生成
-    url_query = f"&url={quote(share_url)}" if share_url else ""
-
-    # 完全な共有リンクを返す
-    return f"https://twitter.com/intent/tweet?text={text}\n{url_query}"
 
 
 
