@@ -68,13 +68,20 @@ body {
 .amazon-btn { background-color: #00BFFF; }
 .rakuten-btn { background-color: #BF0000; }
 .satofuru-btn { background-color: #D2691E; }
-.x-btn { background-color: #f6f6f6; }
+.x-btn {
+    background-color: #ffffff; /* 白背景 */
+    color: #000 !important;    /* テキストを黒に固定 */
+    border: 1px solid #ddd;    /* 輪郭を出して白背景でも目立たせる */
+}
 
 /* ===== ブランドカラー hover ===== */
 .amazon-btn:hover { background-color: #87CEEB; }
 .rakuten-btn:hover { background-color: #990000; }
 .satofuru-btn:hover { background-color: #b85c19; }
-.x-btn:hover { background-color: #f5f5f5; }
+.x-btn:hover {
+    background-color: #f5f5f5; /* hover時にややグレーで反応 */
+    color: #000 !important;    /* hover時も黒を維持 */
+}
 </style>
 """), unsafe_allow_html=True)
 
