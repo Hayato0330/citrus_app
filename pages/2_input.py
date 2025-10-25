@@ -118,7 +118,7 @@ def label_map(k: str) -> str:
     }.get(k, k)
 
 # ===== UI =====
-st.title("🍊 柑橘レコメンダ（UI刷新版）")
+st.title("🍊 柑橘類の推薦システム")
 # 説明キャプションは削除（上に詰める）
 
 # セッション状態の初期化
@@ -183,29 +183,28 @@ with left:
     colL, colMid, colR = st.columns([1, 0.05, 1])
 
     with colL:
-        scale_buttons("甘さ（brix）", "val_brix")
-        scale_buttons("酸味（acid）", "val_acid")
-        scale_buttons("苦味（bitterness）", "val_bitterness")
+        scale_buttons("甘さ", "val_brix")
+        scale_buttons("酸味", "val_acid")
+        scale_buttons("苦味", "val_bitterness")
 
     with colMid:
         st.markdown('<div class="vline-wrap"><div class="vline"></div></div>', unsafe_allow_html=True)
 
     with colR:
-        scale_buttons("香り（aroma）", "val_aroma")
-        scale_buttons("ジューシーさ（moisture）", "val_moisture")
-        scale_buttons("食感（しっかり）（texture）", "val_texture")
+        scale_buttons("香り", "val_aroma")
+        scale_buttons("ジューシーさ", "val_moisture")
+        scale_buttons("食感", "val_texture")
 
     # 季節ボタン（下余白は極小）
     season_buttons("val_season")
 
 with right:
-    st.subheader("右側：操作と出力")
-    st.caption("a〜f ボタンを押すと，下に対応テキスト（A〜F）を出力する．")
+    st.subheader("柑橘ソムリエのヒント")
 
     # a〜f ボタン（クリックで即 rerun → 色即時反映）
     bc = st.columns(6)
     btn_labels = ["a", "b", "c", "d", "e", "f"]
-    out_map = {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E", "f": "F"}
+    out_map = {"a": "甘さが際立つのは、酸味とのバランスが取れている時です。ここでは、希望の甘味の数値に対して、酸味を-2程度にしておくと自然な甘さになります！", "b": "B", "c": "C", "d": "D", "e": "E", "f": "F"}
     cur_out = st.session_state.right_output
     for lab, col in zip(btn_labels, bc):
         with col:
@@ -219,9 +218,9 @@ with right:
 
     st.divider()
     if st.session_state.right_output:
-        st.markdown(f"### 出力: {st.session_state.right_output}")
+        st.markdown(f"### ヒント: {st.session_state.right_output}")
     else:
-        st.info("まだ出力はない．a〜f のいずれかを押すこと．")
+        st.info("上のボタンを押してね")
 
 # ===== 全幅の完了ボタン（左右カラムの外でページ全体に伸ばす） =====
 st.markdown('<div class="submit-row">', unsafe_allow_html=True)
