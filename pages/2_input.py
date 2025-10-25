@@ -19,9 +19,9 @@ st.set_page_config(page_title="柑橘レコメンダ 🍊", page_icon="🍊", la
 st.markdown(
     """
     <style>
-    /* 背景色を #FFF9ED に統一 */
+    /* 背景色を #FFE4B5 に統一 */
     body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
-        background-color: #FFF9ED;
+        background-color: #FFE4B5;
     }
 
     /* 全体の縦余白を詰める */
