@@ -1,4 +1,4 @@
-# UI刷新版（修正版：スクロール不要＋背景色統一＋タイトル縮小＋選択ボタン常時強調＋選択数表示削除）
+# UI刷新版（修正版：詰め調整＋タイトル位置調整＋即時色反映）
 
 import math
 from typing import List, Dict
@@ -23,18 +23,24 @@ st.markdown(
     body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
         background-color: #ffd700;
     }
-    /* 余白をやや詰めて縦方向の高さを節約 */
-    .block-container { padding-top: 0.8rem; padding-bottom: 0.8rem; }
-    /* タイトルを小さくする（st.title -> h1） */
+    /* 全体の縦余白を詰める */
+    .block-container { padding-top: 0.4rem; padding-bottom: 0.6rem; }
+    /* タイトル: 文字を小さくし，フォントサイズの半分だけ下げる（= 0.8rem） */
     .block-container h1 {
         font-size: 1.6rem;
         line-height: 1.2;
+        margin-top: 0.8rem;   /* ← 指定：今の文字の半分の幅だけ下に下げる */
         margin-bottom: 0.4rem;
     }
-    /* 小見出しのマージン微調整 */
+    /* 小見出しの上下マージン微調整（右カラム用） */
     .block-container h3 {
-        margin-top: 0.6rem;
+        margin-top: 0.4rem;
         margin-bottom: 0.4rem;
+    }
+    /* ボタンの横詰め＆高さ調整 */
+    button[kind="secondary"], button[kind="primary"] {
+        padding-top: 0.3rem !important;
+        padding-bottom: 0.3rem !important;
     }
     </style>
     """,
@@ -92,9 +98,9 @@ def label_map(k: str) -> str:
         "texture": "食感（しっかり）",
     }.get(k, k)
 
-# ===== UI（要件） =====
+# ===== UI =====
 st.title("🍊 柑橘レコメンダ（UI刷新版）")
-st.caption("※ この版ではデータの読み込みと結果の表示は行わない．入力完了時のみログを送信する．")
+# 指定により説明キャプションは非表示（その分詰める）
 
 # セッション状態の初期化
 for key in [
@@ -105,50 +111,53 @@ for key in [
 
 def scale_buttons(label: str, state_key: str):
     """
-    1〜6の横並びボタンで値を選択する．選択中の値は常時強調表示（primary色）にする．
-    選択値は session_state[state_key] に格納する．
+    1〜6の横並びボタンで値を選択する．
+    ・選択中ボタンは常時強調（primary）
+    ・クリックした瞬間にも色が反映されるよう，pressed を優先して描画する
     """
     st.write(label)
     cols = st.columns(6)
     current = st.session_state[state_key]
     for i, c in enumerate(cols, start=1):
         with c:
-            # 選択中のボタンだけ type="primary" で常時強調
-            btn_pressed = st.button(
+            pressed = st.button(
                 str(i),
                 key=f"btn_{state_key}_{i}",
-                type=("primary" if current == i else "secondary"),
+                type=("primary" if (current == i) else "secondary"),
                 use_container_width=True,
             )
-            if btn_pressed:
+            if pressed:
                 st.session_state[state_key] = i
+                current = i  # 直後のループ以降で即時反映
 
 def season_buttons(state_key: str = "val_season"):
     """
     季節の4ボタン．選択中のみ常時強調（primary）．
+    クリック時点で即時色反映するため，pressed 後に current を更新する．
     """
     st.write("季節の希望")
     cols = st.columns(4)
-    seasons = [("winter", "冬"), ("spring", "春"), ("summer", "夏"), ("autumn", "秋")]
     cur = st.session_state[state_key]
+    seasons = [("winter", "冬"), ("spring", "春"), ("summer", "夏"), ("autumn", "秋")]
     for (code, label), c in zip(seasons, cols):
         with c:
             pressed = st.button(
                 label,
                 key=f"btn_season_{code}",
-                type=("primary" if cur == code else "secondary"),
+                type=("primary" if (cur == code) else "secondary"),
                 use_container_width=True,
             )
             if pressed:
                 st.session_state[state_key] = code
+                cur = code  # 即時反映
 
-# レイアウト：左＝入力（2列グリッド），右＝操作表示
+# レイアウト：左＝入力（見出しは非表示で上詰め），右＝操作表示
 left, right = st.columns(2, gap="large")
 
 with left:
-    st.subheader("入力（左側）")
+    # 指定により「入力（左側）」は非表示（その分上に詰める）
 
-    # ===== スクロール不要化：2列グリッドに再配置 =====
+    # 2列グリッドに配置（スクロール不要）
     colL, colR = st.columns(2)
     with colL:
         scale_buttons("甘さ（brix）", "val_brix")
@@ -189,9 +198,9 @@ with left:
 
 with right:
     st.subheader("右側：操作と出力")
-    st.caption("上部の a〜f ボタンを押すと，下に対応テキスト（A〜F）を出力する．")
+    st.caption("a〜f ボタンを押すと，下に対応テキスト（A〜F）を出力する．")
 
-    # 右上：a〜f ボタン（選択中は常時強調）
+    # a〜f ボタン（クリック時点で即時色反映）
     bc = st.columns(6)
     btn_labels = ["a", "b", "c", "d", "e", "f"]
     out_map = {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E", "f": "F"}
@@ -201,15 +210,14 @@ with right:
             pressed = st.button(
                 lab.upper(),
                 key=f"btn_right_{lab}",
-                type=("primary" if cur_out == out_map[lab] else "secondary"),
+                type=("primary" if (cur_out == out_map[lab]) else "secondary"),
                 use_container_width=True,
             )
             if pressed:
                 st.session_state.right_output = out_map[lab]
-                cur_out = st.session_state.right_output  # 直後の描画に反映
+                cur_out = out_map[lab]  # 即時反映
 
     st.divider()
-    # 押されたボタンに応じてテキストを表示
     if st.session_state.right_output:
         st.markdown(f"### 出力: {st.session_state.right_output}")
     else:
@@ -219,4 +227,3 @@ with right:
 # ・本UIではデータの読み込みおよび推薦結果の表示は行わない（要件）．
 # ・ログは「完了」押下時のみ送信し，未入力がある場合は送信しない（要件）．
 # ・重み・表示件数の項目は削除している（要件）．
-
