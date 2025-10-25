@@ -1,4 +1,4 @@
-# UI刷新版（修正版：詰め調整＋タイトル位置調整＋即時色反映）
+# UI刷新版（修正版：縦ライン追加／隙間詰め／即時色反映）
 
 import math
 from typing import List, Dict
@@ -15,7 +15,7 @@ import uuid
 # ===== 基本設定 =====
 st.set_page_config(page_title="柑橘レコメンダ 🍊", page_icon="🍊", layout="wide")
 
-# ===== 背景色と余白・タイポグラフィ調整 =====
+# ===== 背景色・余白・タイポグラフィ調整 =====
 st.markdown(
     """
     <style>
@@ -25,23 +25,31 @@ st.markdown(
     }
     /* 全体の縦余白を詰める */
     .block-container { padding-top: 0.4rem; padding-bottom: 0.6rem; }
-    /* タイトル: 文字を小さくし，フォントサイズの半分だけ下げる（= 0.8rem） */
+
+    /* タイトル：小さめ＋フォントサイズの半分だけ下げる（= 0.8rem） */
     .block-container h1 {
         font-size: 1.6rem;
         line-height: 1.2;
-        margin-top: 0.8rem;   /* ← 指定：今の文字の半分の幅だけ下に下げる */
-        margin-bottom: 0.4rem;
+        margin-top: 0.8rem;   /* 指定どおり下げる */
+        margin-bottom: 0.2rem;
     }
-    /* 小見出しの上下マージン微調整（右カラム用） */
-    .block-container h3 {
-        margin-top: 0.4rem;
-        margin-bottom: 0.4rem;
-    }
-    /* ボタンの横詰め＆高さ調整 */
+
+    /* 右カラム見出しの余白を控えめに */
+    .block-container h3 { margin-top: 0.3rem; margin-bottom: 0.2rem; }
+
+    /* 季節セクションと完了ボタン間の隙間を詰める */
+    .season-section { margin-bottom: 0.2rem; }
+    hr { margin: 0.2rem 0 !important; }
+
+    /* ボタンの高さ抑制（縦詰め） */
     button[kind="secondary"], button[kind="primary"] {
         padding-top: 0.3rem !important;
         padding-bottom: 0.3rem !important;
     }
+
+    /* 左入力2列の間に縦ライン（中央細カラムを線にする） */
+    .vline { width: 100%; height: 100%; border-left: 2px solid rgba(0,0,0,0.35); }
+    .vline-wrap { display: flex; align-items: stretch; height: 100%; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -100,7 +108,7 @@ def label_map(k: str) -> str:
 
 # ===== UI =====
 st.title("🍊 柑橘レコメンダ（UI刷新版）")
-# 指定により説明キャプションは非表示（その分詰める）
+# 説明キャプションは削除（詰め）
 
 # セッション状態の初期化
 for key in [
@@ -109,72 +117,81 @@ for key in [
 ]:
     st.session_state.setdefault(key, None)
 
+def _immediate_select(state_key: str, value):
+    """選択状態を更新して即時再描画するヘルパ．"""
+    st.session_state[state_key] = value
+    # クリック直後に色を反映させるために即時再実行
+    st.rerun()
+
 def scale_buttons(label: str, state_key: str):
     """
     1〜6の横並びボタンで値を選択する．
-    ・選択中ボタンは常時強調（primary）
-    ・クリックした瞬間にも色が反映されるよう，pressed を優先して描画する
+    ・選択中ボタンは常時 primary 色
+    ・クリック時に即 rerun してその場で色が反映される
     """
     st.write(label)
     cols = st.columns(6)
     current = st.session_state[state_key]
     for i, c in enumerate(cols, start=1):
         with c:
-            pressed = st.button(
+            # type は現状態に基づく．押されたら即時 rerun して再描画で色反映．
+            if st.button(
                 str(i),
                 key=f"btn_{state_key}_{i}",
                 type=("primary" if (current == i) else "secondary"),
                 use_container_width=True,
-            )
-            if pressed:
-                st.session_state[state_key] = i
-                current = i  # 直後のループ以降で即時反映
+            ):
+                _immediate_select(state_key, i)
 
 def season_buttons(state_key: str = "val_season"):
     """
-    季節の4ボタン．選択中のみ常時強調（primary）．
-    クリック時点で即時色反映するため，pressed 後に current を更新する．
+    季節の4ボタン．選択中のみ primary．
+    クリック時に即 rerun し，色が一段遅れにならないようにする．
     """
+    st.markdown('<div class="season-section">', unsafe_allow_html=True)
     st.write("季節の希望")
     cols = st.columns(4)
     cur = st.session_state[state_key]
     seasons = [("winter", "冬"), ("spring", "春"), ("summer", "夏"), ("autumn", "秋")]
     for (code, label), c in zip(seasons, cols):
         with c:
-            pressed = st.button(
+            if st.button(
                 label,
                 key=f"btn_season_{code}",
                 type=("primary" if (cur == code) else "secondary"),
                 use_container_width=True,
-            )
-            if pressed:
-                st.session_state[state_key] = code
-                cur = code  # 即時反映
+            ):
+                _immediate_select(state_key, code)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# レイアウト：左＝入力（見出しは非表示で上詰め），右＝操作表示
+# レイアウト：左＝入力（見出しなしで上詰め），右＝操作表示
 left, right = st.columns(2, gap="large")
 
 with left:
-    # 指定により「入力（左側）」は非表示（その分上に詰める）
+    # 2列＋中央細カラム（縦ライン）で配置
+    colL, colMid, colR = st.columns([1, 0.05, 1])
 
-    # 2列グリッドに配置（スクロール不要）
-    colL, colR = st.columns(2)
     with colL:
         scale_buttons("甘さ（brix）", "val_brix")
         scale_buttons("酸味（acid）", "val_acid")
         scale_buttons("苦味（bitterness）", "val_bitterness")
+
+    with colMid:
+        # 高さを自然に伸ばすため，ラッパーを使って縦ラインを描画
+        st.markdown('<div class="vline-wrap"><div class="vline"></div></div>', unsafe_allow_html=True)
+
     with colR:
         scale_buttons("香り（aroma）", "val_aroma")
         scale_buttons("ジューシーさ（moisture）", "val_moisture")
         scale_buttons("食感（しっかり）（texture）", "val_texture")
 
-    # 季節ボタンは2列の下にまとめる
+    # 季節ボタン（セクション下の余白は極小）
     season_buttons("val_season")
 
-    st.divider()
-    # 左下：完了ボタン（押下時のみログ記録）
+    # 区切り線は挿入しない（隙間発生を避ける）
+    # 完了ボタンを直下に配置し，さらに上方向に寄せるため余白を置かない
     if st.button("完了", type="primary", use_container_width=True):
-        # 入力検証（未入力があればエラー）
+        # 入力検証
         missing = [
             k for k in [
                 "val_brix", "val_acid", "val_bitterness", "val_aroma",
@@ -200,22 +217,20 @@ with right:
     st.subheader("右側：操作と出力")
     st.caption("a〜f ボタンを押すと，下に対応テキスト（A〜F）を出力する．")
 
-    # a〜f ボタン（クリック時点で即時色反映）
+    # a〜f ボタン（クリックで即 rerun → 色即時反映）
     bc = st.columns(6)
     btn_labels = ["a", "b", "c", "d", "e", "f"]
     out_map = {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E", "f": "F"}
     cur_out = st.session_state.right_output
     for lab, col in zip(btn_labels, bc):
         with col:
-            pressed = st.button(
+            if st.button(
                 lab.upper(),
                 key=f"btn_right_{lab}",
                 type=("primary" if (cur_out == out_map[lab]) else "secondary"),
                 use_container_width=True,
-            )
-            if pressed:
-                st.session_state.right_output = out_map[lab]
-                cur_out = out_map[lab]  # 即時反映
+            ):
+                _immediate_select("right_output", out_map[lab])
 
     st.divider()
     if st.session_state.right_output:
