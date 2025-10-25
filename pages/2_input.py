@@ -1,4 +1,4 @@
-# UI刷新版（修正版：縦ライン追加／隙間詰め／即時色反映）
+# UI刷新版（修正版：背景#FFF9ED／完了ボタン全幅／ボタン影＆押下動作／即時色反映）
 
 import math
 from typing import List, Dict
@@ -15,41 +15,52 @@ import uuid
 # ===== 基本設定 =====
 st.set_page_config(page_title="柑橘レコメンダ 🍊", page_icon="🍊", layout="wide")
 
-# ===== 背景色・余白・タイポグラフィ調整 =====
+# ===== 背景色・余白・タイポグラフィ・ボタン演出 =====
 st.markdown(
     """
     <style>
-    /* 背景色を #ffd700 で統一 */
+    /* 背景色を #FFF9ED に統一 */
     body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
-        background-color: #ffd700;
+        background-color: #FFF9ED;
     }
+
     /* 全体の縦余白を詰める */
     .block-container { padding-top: 0.4rem; padding-bottom: 0.6rem; }
 
-    /* タイトル：小さめ＋フォントサイズの半分だけ下げる（= 0.8rem） */
+    /* タイトル：小さめ＋「今の文字の半分の幅」だけ下げる（= 0.8rem） */
     .block-container h1 {
         font-size: 1.6rem;
         line-height: 1.2;
-        margin-top: 0.8rem;   /* 指定どおり下げる */
+        margin-top: 0.8rem;    /* 指定どおり半分だけ下げる */
         margin-bottom: 0.2rem;
     }
 
-    /* 右カラム見出しの余白を控えめに */
+    /* 右カラムの小見出しの余白を控えめに */
     .block-container h3 { margin-top: 0.3rem; margin-bottom: 0.2rem; }
 
-    /* 季節セクションと完了ボタン間の隙間を詰める */
-    .season-section { margin-bottom: 0.2rem; }
-    hr { margin: 0.2rem 0 !important; }
+    /* 季節セクションの下余白を極小に（完了ボタンとの隙間を詰める） */
+    .season-section { margin-bottom: 0.1rem; }
 
-    /* ボタンの高さ抑制（縦詰め） */
+    /* ボタンのサイズ・影・押下アニメーション（全ボタン共通） */
     button[kind="secondary"], button[kind="primary"] {
-        padding-top: 0.3rem !important;
-        padding-bottom: 0.3rem !important;
+        padding-top: 0.34rem !important;
+        padding-bottom: 0.34rem !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+        transition: transform 0.02s ease, box-shadow 0.02s ease, filter 0.02s ease;
+    }
+    /* へこむ動き（押下時） */
+    button[kind="secondary"]:active, button[kind="primary"]:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        filter: saturate(1.05);
     }
 
-    /* 左入力2列の間に縦ライン（中央細カラムを線にする） */
-    .vline { width: 100%; height: 100%; border-left: 2px solid rgba(0,0,0,0.35); }
+    /* 左入力2列の間に縦ライン（中央細カラム） */
+    .vline { width: 100%; height: 100%; border-left: 2px solid rgba(0,0,0,0.25); }
     .vline-wrap { display: flex; align-items: stretch; height: 100%; }
+
+    /* 全幅の完了ボタン行（上詰め） */
+    .submit-row { margin-top: 0.1rem; }  /* 季節ボタン直下に寄せる */
     </style>
     """,
     unsafe_allow_html=True,
@@ -108,7 +119,7 @@ def label_map(k: str) -> str:
 
 # ===== UI =====
 st.title("🍊 柑橘レコメンダ（UI刷新版）")
-# 説明キャプションは削除（詰め）
+# 説明キャプションは削除（上に詰める）
 
 # セッション状態の初期化
 for key in [
@@ -117,24 +128,24 @@ for key in [
 ]:
     st.session_state.setdefault(key, None)
 
+# ---- 即時反映ヘルパ ----
 def _immediate_select(state_key: str, value):
-    """選択状態を更新して即時再描画するヘルパ．"""
+    """選択状態を更新して即時再描画するヘルパ．（色切替の一段遅れを解消）"""
     st.session_state[state_key] = value
-    # クリック直後に色を反映させるために即時再実行
     st.rerun()
 
+# ---- 入力ボタン群 ----
 def scale_buttons(label: str, state_key: str):
     """
     1〜6の横並びボタンで値を選択する．
     ・選択中ボタンは常時 primary 色
-    ・クリック時に即 rerun してその場で色が反映される
+    ・クリック直後に rerun して即時に色を反映する
     """
     st.write(label)
     cols = st.columns(6)
     current = st.session_state[state_key]
     for i, c in enumerate(cols, start=1):
         with c:
-            # type は現状態に基づく．押されたら即時 rerun して再描画で色反映．
             if st.button(
                 str(i),
                 key=f"btn_{state_key}_{i}",
@@ -146,7 +157,7 @@ def scale_buttons(label: str, state_key: str):
 def season_buttons(state_key: str = "val_season"):
     """
     季節の4ボタン．選択中のみ primary．
-    クリック時に即 rerun し，色が一段遅れにならないようにする．
+    クリック直後に rerun して即時色反映する．
     """
     st.markdown('<div class="season-section">', unsafe_allow_html=True)
     st.write("季節の希望")
@@ -177,7 +188,6 @@ with left:
         scale_buttons("苦味（bitterness）", "val_bitterness")
 
     with colMid:
-        # 高さを自然に伸ばすため，ラッパーを使って縦ラインを描画
         st.markdown('<div class="vline-wrap"><div class="vline"></div></div>', unsafe_allow_html=True)
 
     with colR:
@@ -185,33 +195,8 @@ with left:
         scale_buttons("ジューシーさ（moisture）", "val_moisture")
         scale_buttons("食感（しっかり）（texture）", "val_texture")
 
-    # 季節ボタン（セクション下の余白は極小）
+    # 季節ボタン（下余白は極小）
     season_buttons("val_season")
-
-    # 区切り線は挿入しない（隙間発生を避ける）
-    # 完了ボタンを直下に配置し，さらに上方向に寄せるため余白を置かない
-    if st.button("完了", type="primary", use_container_width=True):
-        # 入力検証
-        missing = [
-            k for k in [
-                "val_brix", "val_acid", "val_bitterness", "val_aroma",
-                "val_moisture", "val_texture", "val_season", "right_output",
-            ] if st.session_state.get(k) in (None, "")
-        ]
-        if missing:
-            st.error("未入力の項目があるため送信できない．右側のボタン出力を含め，全項目を選択・出力してから再度実行すること．")
-        else:
-            input_dict = {
-                "brix": int(st.session_state.val_brix),
-                "acid": int(st.session_state.val_acid),
-                "bitterness": int(st.session_state.val_bitterness),
-                "aroma": int(st.session_state.val_aroma),
-                "moisture": int(st.session_state.val_moisture),
-                "texture": int(st.session_state.val_texture),
-                "season_pref": st.session_state.val_season,
-            }
-            _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
-            st.success("入力値と出力値をログとして送信した．")
 
 with right:
     st.subheader("右側：操作と出力")
@@ -237,6 +222,32 @@ with right:
         st.markdown(f"### 出力: {st.session_state.right_output}")
     else:
         st.info("まだ出力はない．a〜f のいずれかを押すこと．")
+
+# ===== 全幅の完了ボタン（左右カラムの外でページ全体に伸ばす） =====
+st.markdown('<div class="submit-row">', unsafe_allow_html=True)
+if st.button("完了", type="primary", use_container_width=True, key="btn_submit_full"):
+    # 入力検証
+    missing = [
+        k for k in [
+            "val_brix", "val_acid", "val_bitterness", "val_aroma",
+            "val_moisture", "val_texture", "val_season", "right_output",
+        ] if st.session_state.get(k) in (None, "")
+    ]
+    if missing:
+        st.error("未入力の項目があるため送信できない．右側のボタン出力を含め，全項目を選択・出力してから再度実行すること．")
+    else:
+        input_dict = {
+            "brix": int(st.session_state.val_brix),
+            "acid": int(st.session_state.val_acid),
+            "bitterness": int(st.session_state.val_bitterness),
+            "aroma": int(st.session_state.val_aroma),
+            "moisture": int(st.session_state.val_moisture),
+            "texture": int(st.session_state.val_texture),
+            "season_pref": st.session_state.val_season,
+        }
+        _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
+        st.success("入力値と出力値をログとして送信した．")
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ===== 注意事項 =====
 # ・本UIではデータの読み込みおよび推薦結果の表示は行わない（要件）．
