@@ -1,4 +1,4 @@
-# top.py
+# 1_top.py
 import streamlit as st
 import base64
 from pathlib import Path
@@ -23,7 +23,7 @@ def local_image_to_data_url(path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 # 背景画像を読み込む
-bg_url = local_image_to_data_url("top_background.png")
+bg_url = local_image_to_data_url("../top_background.png")
 
 # ----------------------------------------------------------
 # 3️⃣ CSSデザイン
