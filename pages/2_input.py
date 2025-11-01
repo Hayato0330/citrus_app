@@ -58,7 +58,7 @@ st.markdown(
 
     /* 左入力2列の間に縦ライン（中央細カラム） */
     .vline { width: 100%; height: 100%; border-left: 2px solid rgba(0,0,0,0.25); 
-             min-height: 28rem; }  /* ← 追加：常時見える最小高さを確保 */
+             min-height: 22rem; }  /* ← 追加：常時見える最小高さを確保 */
     .vline-wrap { display: flex; align-items: stretch; height: 100%; }
 
     /* 全幅の完了ボタン行（上詰め） */
