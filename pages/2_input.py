@@ -223,7 +223,7 @@ with right:
 
     st.divider()
     if st.session_state.right_output:
-        st.markdown(f"### ヒント: {st.session_state.right_output}")
+        st.markdown(f"### {st.session_state.right_output}")
     else:
         st.info("上のボタンを押してね")
 
