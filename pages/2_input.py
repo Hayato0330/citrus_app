@@ -1,4 +1,5 @@
 # UI刷新版（修正版：背景#FFF9ED／完了ボタン全幅／ボタン影＆押下動作／即時色反映）
+# 右ボタン高さ統一／左2列の縦ライン常時表示を追加
 
 import math
 from typing import List, Dict
@@ -56,11 +57,25 @@ st.markdown(
     }
 
     /* 左入力2列の間に縦ライン（中央細カラム） */
-    .vline { width: 100%; height: 100%; border-left: 2px solid rgba(0,0,0,0.25); }
+    .vline { width: 100%; height: 100%; border-left: 2px solid rgba(0,0,0,0.25); 
+             min-height: 28rem; }  /* ← 追加：常時見える最小高さを確保 */
     .vline-wrap { display: flex; align-items: stretch; height: 100%; }
 
     /* 全幅の完了ボタン行（上詰め） */
     .submit-row { margin-top: 0.1rem; }  /* 季節ボタン直下に寄せる */
+
+    /* === 右側ヒント用ボタン：高さと見た目の統一 === */
+    .right-btns button[kind="secondary"], 
+    .right-btns button[kind="primary"] {
+        min-height: 3.2rem;          /* ← 追加：高さを統一 */
+        display: flex;               /* 中央寄せ */
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 0.9rem;           /* 長文でも収まりやすく */
+        line-height: 1.2;
+        white-space: normal;         /* 折り返し許可 */
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -188,6 +203,7 @@ with left:
         scale_buttons("苦味", "val_bitterness")
 
     with colMid:
+        # 常時見える縦ライン
         st.markdown('<div class="vline-wrap"><div class="vline"></div></div>', unsafe_allow_html=True)
 
     with colR:
@@ -201,25 +217,36 @@ with left:
 with right:
     st.subheader("柑橘ソムリエのヒント")
 
-    # a〜f ボタン（クリックで即 rerun → 色即時反映）
+    # 右側ボタンをラップして高さ統一を適用
+    st.markdown('<div class="right-btns">', unsafe_allow_html=True)
+
     bc = st.columns(5)
-    btn_labels = ["際立つ甘さが好きな人へ", "ビターな大人へ", "香りを楽しむ人へ", "溢れる果汁が好きは人へ", "食感重視の人へ"]
-    out_map = {"際立つ甘さが好きな人へ": "甘さが際立つのは、酸味とのバランスが取れている時です。ここでは、希望の甘味の数値に対して、酸味を-2程度にしておくと自然な甘さになります！", 
-               "ビターな大人へ": "苦味は柑橘の白い繊維や薄皮から感じられます。この苦味を味わえると柑橘の幅が大きく広がります！大人な苦味が好きな人は、苦味を4以上にするのがおすすめです！", 
-               "香りを楽しむ人へ": "ここでの香りは、口に入れた時の鼻に抜ける香りを指します！味の濃さは香りの強さと大きく影響するので数字が大きいほど風味は豊かですが、味のバランスが雑になりやすいので注意が必要です。", 
-               "溢れる果汁が好きは人へ": "ジューシーな果実が好きな人は果汁量はもちろん大きめに入力するのがおすすめです。しかし、甘味や酸味などが小さいと水っぽい味わいになりやすいので注意が必要です！", 
-               "食感重視の人へ": "弾力は口にしてからの印象に大きく影響します。プチッと食感が好きな人は弾力を大きく、口に入れた瞬間にとろけるような味わいが好きな人は小さく入力するのがおすすめです。", 
-               }
+    btn_labels = [
+        "際立つ甘さが好きな人へ",
+        "ビターな大人へ",
+        "香りを楽しむ人へ",
+        "溢れる果汁が好きは人へ",
+        "食感重視の人へ",
+    ]
+    out_map = {
+        "際立つ甘さが好きな人へ": "甘さが際立つのは、酸味とのバランスが取れている時です。ここでは、希望の甘味の数値に対して、酸味を-2程度にしておくと自然な甘さになります！",
+        "ビターな大人へ": "苦味は柑橘の白い繊維や薄皮から感じられます。この苦味を味わえると柑橘の幅が大きく広がります！大人な苦味が好きな人は、苦味を4以上にするのがおすすめです！",
+        "香りを楽しむ人へ": "ここでの香りは、口に入れた時の鼻に抜ける香りを指します！味の濃さは香りの強さと大きく影響するので数字が大きいほど風味は豊かですが、味のバランスが雑になりやすいので注意が必要です。",
+        "溢れる果汁が好きは人へ": "ジューシーな果実が好きな人は果汁量はもちろん大きめに入力するのがおすすめです。しかし、甘味や酸味などが小さいと水っぽい味わいになりやすいので注意が必要です！",
+        "食感重視の人へ": "弾力は口にしてからの印象に大きく影響します。プチッと食感が好きな人は弾力を大きく、口に入れた瞬間にとろけるような味わいが好きな人は小さく入力するのがおすすめです。",
+    }
     cur_out = st.session_state.right_output
     for lab, col in zip(btn_labels, bc):
         with col:
             if st.button(
-                lab.upper(),
+                lab.upper(),  # 日本語はそのままだが統一のため既存仕様を維持
                 key=f"btn_right_{lab}",
                 type=("primary" if (cur_out == out_map[lab]) else "secondary"),
                 use_container_width=True,
             ):
                 _immediate_select("right_output", out_map[lab])
+
+    st.markdown("</div>", unsafe_allow_html=True)  # /.right-btns
 
     st.divider()
     if st.session_state.right_output:
@@ -257,3 +284,4 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ・本UIではデータの読み込みおよび推薦結果の表示は行わない（要件）．
 # ・ログは「完了」押下時のみ送信し，未入力がある場合は送信しない（要件）．
 # ・重み・表示件数の項目は削除している（要件）．
+
