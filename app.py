@@ -13,8 +13,6 @@ if "route" not in st.session_state:
 route = st.session_state["route"]
 
 if route == "top":
-    # 事前に遷移フラグをクリア
-    st.session_state.pop("navigate_to", None)
 
     # 1_top.py を実行（数字始まりなので import ではなく run_path を使う）
     runpy.run_path("pages/1_top.py")
@@ -22,6 +20,7 @@ if route == "top":
     # ボタンが押されていれば route を切り替えて即時再実行
     if st.session_state.get("navigate_to") == "input":
         st.session_state["route"] = "input"
+        del st.session_state["navigate_to"]  # ここで消費してクリア
         st.rerun()
 
 elif route == "input":
