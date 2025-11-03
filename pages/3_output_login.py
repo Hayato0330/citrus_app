@@ -1,11 +1,26 @@
+# 3_output_logion.py
 import streamlit as st
 import numpy as np
 import pandas as pd
 from urllib.parse import quote
 import textwrap
+import base64
+from pathlib import Path
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
+
+@st.cache_data
+def local_image_to_data_url(path: str) -> str:
+    p = Path(path)
+    if not p.exists():
+        st.warning(f"背景画像が見つかりません: {p}")
+        return ""
+    mime = "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
+    b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
+bg_url = local_image_to_data_url("../top_background.png")
 
 # ===== CSS =====
 st.markdown(textwrap.dedent("""
@@ -78,7 +93,23 @@ body {
 </style>
 """), unsafe_allow_html=True)
 
-
+st.markdown(
+    f"""
+    <style>
+    [data-testid="stAppViewContainer"] {{
+        background-image: url("{bg_url}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
+        background: transparent !important;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ===== データ処理関数 =====
 def load_data(csv_path: str) -> pd.DataFrame | None:
@@ -226,3 +257,10 @@ with quadrants[3]:
     """, unsafe_allow_html=True)
 
 st.caption("※ マッチ度は嗜好との近さを % 表記。季節一致がある場合は加点されます。")
+
+# === サイドバーに戻るボタン ===
+with st.sidebar:
+    if st.button("← トップへ戻る", use_container_width=True):
+        st.session_state["route"] = "top"
+        st.rerun()
+
