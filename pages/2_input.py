@@ -109,7 +109,6 @@ def _append_simple_log(input_dict: dict, output_value: str | None) -> None:
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
         "input_json": input_dict,
-        "result": {"output": output_value},
     }
     key = str(hash(str(payload["input_json"]) + str(payload["result"])))
     if st.session_state.get("last_log_key") == key:
