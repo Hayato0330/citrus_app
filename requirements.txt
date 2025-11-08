@@ -5,3 +5,6 @@ scikit-learn
 supabase
 requests
 boto3
+google-auth
+google-auth-oauthlib
+streamlit-javascript
