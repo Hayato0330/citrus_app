@@ -37,8 +37,19 @@ st.markdown(textwrap.dedent(f"""
 [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
     background: transparent !important;
 }}
+
+/* ===== infoボックスを黒背景＋白文字に ===== */
+div[data-testid="stMarkdownContainer"] > div > .stAlert {{
+    background: rgba(0, 0, 0, 0.85) !important;  /* 半透明の黒 */
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-weight: 500;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}}
 </style>
 """), unsafe_allow_html=True)
+
 
 # ===== Google クライアントID =====
 GOOGLE_CLIENT_ID = "850365063962-ntge0smf483se8h9ktpjjlvre2cdh4hl.apps.googleusercontent.com"  # ← GCPで取得したIDに置き換え
