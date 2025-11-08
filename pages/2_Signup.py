@@ -7,8 +7,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 
 # ===== ページ設定 =====
-st.set_page_config(page_title="新規登録 - 柑橘推薦システム", page_icon="🍊", layout="wide")
-# ===== 背景画像（Base64埋め込み） =====
+st.set_page_config(page_title="新規登録 - 柑橘推薦システム", page_icon="🍊", layout="centered")
+
 @st.cache_data
 def local_image_to_data_url(path: str) -> str:
     p = Path(path)
@@ -37,18 +37,29 @@ st.markdown(textwrap.dedent(f"""
 [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
     background: transparent !important;
 }}
-
-/* ===== infoボックスを黒背景＋白文字に ===== */
-div[data-testid="stMarkdownContainer"] > div > .stAlert {{
-    background: rgba(0, 0, 0, 0.85) !important;  /* 半透明の黒 */
-    color: #fff !important;
-    border: 1px solid rgba(255,255,255,0.2);
-    font-weight: 500;
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-}}
 </style>
 """), unsafe_allow_html=True)
+
+# ===== タイトル部分 =====
+st.markdown("## 新規登録 - 柑橘類の推薦システム")
+
+# ===== 黒背景の案内ボックス =====
+st.markdown("""
+<div style="
+    background-color: rgba(0, 0, 0, 0.85);
+    color: white;
+    text-align: center;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-weight: 500;
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+">
+※ 本サービスは 電気通信大学 の Google アカウント（@gl.cc.uec.ac.jp）のみ利用可能です。
+</div>
+""", unsafe_allow_html=True)
 
 
 # ===== Google クライアントID =====
@@ -57,12 +68,15 @@ GOOGLE_CLIENT_ID = "850365063962-ntge0smf483se8h9ktpjjlvre2cdh4hl.apps.googleuse
 # ===== 許可するドメイン =====
 ALLOWED_DOMAIN = "gl.cc.uec.ac.jp"
 
-st.markdown("## 🎓 UECクラウドアカウントで新規登録")
-st.info("※ 本サービスは 電気通信大学 の Google アカウント（@gl.cc.uec.ac.jp）のみ利用可能です。")
-
 # ===== Google Sign-In ボタンを埋め込み =====
 components.html(
     f"""
+    <style>
+      .g_id_signin {{
+          margin-top: 40px;  /* ← この行で下に下げる（pxを増やすとさらに下がる） */
+      }}
+    </style>
+
     <div id="g_id_onload"
          data-client_id="{GOOGLE_CLIENT_ID}"
          data-context="signin"
@@ -89,7 +103,7 @@ components.html(
       }}
     </script>
     """,
-    height=400,
+    height=600,  # ← 高さも少し増やすと自然
 )
 
 # ===== JS→Pythonの通信（トークン取得） =====
