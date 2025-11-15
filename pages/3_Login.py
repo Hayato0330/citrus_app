@@ -63,7 +63,7 @@ st.markdown("""
 
 
 # ===== Google クライアントID =====
-GOOGLE_CLIENT_ID = "50427079333-hvl90ll0nud8nns6cfdvqbuh1r2qmdrq.apps.googleusercontent.com"  # ← GCPで取得したIDに置き換え
+GOOGLE_CLIENT_ID = "317782524858-5q1rgg3e4dgr0ej3lqi2ri048ag9q4lh.apps.googleusercontent.com"  # ← GCPで取得したIDに置き換え
 
 # ===== 許可するメールドメイン =====
 ALLOW_ONLY_GLC = True                    # ← gl のみで OK なら True のまま
