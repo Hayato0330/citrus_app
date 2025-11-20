@@ -169,8 +169,8 @@ else:
 st.markdown("---")
 st.markdown("### または LINE でログイン")
 
-CHANNEL_ID = st.secrets["2008535097"]
-REDIRECT_URI = st.secrets["https://citrusapp-rue455jejkqyvvcvsfbaqk.streamlit.app/callback_line"]
+CHANNEL_ID = st.secrets["LINE_CHANNEL_ID"]
+REDIRECT_URI = st.secrets["LINE_REDIRECT_URI"]
 
 def create_line_authorize_url():
     base_url = "https://access.line.me/oauth2/v2.1/authorize"
