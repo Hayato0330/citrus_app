@@ -69,7 +69,7 @@ st.markdown("""
     font-size: 0.95rem;
     margin-top: 0.5rem;
 ">
-※ 本サービスは 電気通信大学 の Google アカウント（@gl.cc.uec.ac.jp）のみ利用可能です。
+※ Googleログインの場合、 電通大UECクラウドアカウント（@gl.cc.uec.ac.jp）のみ利用可能です。
 </div>
 """, unsafe_allow_html=True)
 
