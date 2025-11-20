@@ -180,15 +180,17 @@ with col2:
 
     login_url = create_line_authorize_url()
 
-    st.markdown(
-        f"""
+    # 公式PNG（改変禁止）をそのまま使う。citrus_app/ に設置済み
+    line_btn_path = "btn_login_press.png"
+    st.markdown(f"""
+    <div style="margin-top: 12px; margin-bottom: 12px;">
         <a href="{login_url}">
-            <img src="https://developers.line.biz/media/login_button_guideline/line_login_button.png"
-                style="width:200px; margin-top:20px;">
+            <img src="{line_btn_path}"
+                style="width:220px; max-width:100%; display:block; margin:auto;">
         </a>
-        """,
-        unsafe_allow_html=True
-    )
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ==============================================================
 # END
