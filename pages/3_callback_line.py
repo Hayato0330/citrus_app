@@ -18,9 +18,9 @@ if "code" not in query_params:
 code = query_params["code"]
 state = query_params.get("state", "")
 
-LINE_CLIENT_ID = "（あなたのLINEチャネルID）"
-LINE_CLIENT_SECRET = "（あなたのLINEチャネルシークレット）"
-CALLBACK_URL = "https://citrusapp-xxxxxxx.streamlit.app/callback_line"
+LINE_CLIENT_ID = "2008535097"
+LINE_CLIENT_SECRET = "734af4438b17832c091dcd57cfb589f9"
+CALLBACK_URL = "https://citrusapp-rue455jejkqyvvcvsfbaqk.streamlit.app/callback_line"
 
 # アクセストークン交換
 token_url = "https://api.line.me/oauth2/v2.1/token"
