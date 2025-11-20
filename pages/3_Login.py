@@ -163,3 +163,27 @@ else:
         # その他の認証エラー
         st.error(f"Google 認証で予期しないエラーが発生しました: {e}")
 
+# ===== LINEログイン =====
+
+st.markdown("---")
+st.markdown("### または LINE でログイン")
+
+LINE_CLIENT_ID = "（あなたの LINE チャネルID）"
+
+CALLBACK_URL = "https://citrusapp-xxxxxxx.streamlit.app/callback_line"
+
+line_auth_url = (
+    "https://access.line.me/oauth2/v2.1/authorize"
+    f"?response_type=code"
+    f"&client_id={LINE_CLIENT_ID}"
+    f"&redirect_uri={CALLBACK_URL}"
+    f"&state=xyz123"
+    f"&scope=profile%20openid"
+)
+
+st.markdown(f"""
+<a href="{line_auth_url}">
+    <img src="https://developers.line.biz/media/line-login-button/line-l-login.png"
+         style="height:50px;">
+</a>
+""", unsafe_allow_html=True)
