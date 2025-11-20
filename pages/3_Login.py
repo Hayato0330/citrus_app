@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import textwrap
 import base64
+import urllib.parse
 from pathlib import Path
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -168,22 +169,25 @@ else:
 st.markdown("---")
 st.markdown("### または LINE でログイン")
 
-LINE_CLIENT_ID = "（あなたの LINE チャネルID）"
+CHANNEL_ID = st.secrets["2008535097"]
+REDIRECT_URI = st.secrets["https://citrusapp-rue455jejkqyvvcvsfbaqk.streamlit.app/callback_line"]
 
-CALLBACK_URL = "https://citrusapp-xxxxxxx.streamlit.app/callback_line"
+def create_line_authorize_url():
+    base_url = "https://access.line.me/oauth2/v2.1/authorize"
+    params = {
+        "response_type": "code",
+        "client_id": CHANNEL_ID,
+        "redirect_uri": REDIRECT_URI,
+        "state": "random_state_12345",
+        "scope": "profile openid email",
+        "nonce": "random_nonce_abc"
+    }
+    return base_url + "?" + urllib.parse.urlencode(params)
 
-line_auth_url = (
-    "https://access.line.me/oauth2/v2.1/authorize"
-    f"?response_type=code"
-    f"&client_id={LINE_CLIENT_ID}"
-    f"&redirect_uri={CALLBACK_URL}"
-    f"&state=xyz123"
-    f"&scope=profile%20openid"
-)
+login_url = create_line_authorize_url()
 
 st.markdown(f"""
-<a href="{line_auth_url}">
-    <img src="https://developers.line.biz/media/line-login-button/line-l-login.png"
-         style="height:50px;">
+<a href="{login_url}">
+    <img src="https://developers.line.biz/media/login_button_guideline/line_login_button.png" width="240">
 </a>
 """, unsafe_allow_html=True)
