@@ -29,6 +29,9 @@ def local_image_to_data_url(path: str) -> str:
     b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
+# ==============================================================
+# 背景画像を読み込み
+# ==============================================================
 IMG_PATH = Path(__file__).resolve().parent.parent / "top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
@@ -161,7 +164,7 @@ if token:
         st.error(f"Google 認証エラー: {e}")
 
 # ==============================================================
-# LINE ログイン
+# LINE ログイン（画像を base64 で読み込んで埋め込み）
 # ==============================================================
 with col2:
     st.markdown("#### LINE でログイン")
@@ -180,16 +183,21 @@ with col2:
 
     login_url = create_line_authorize_url()
 
-    # 公式PNG（改変禁止）をそのまま使う。citrus_app/ に設置済み
-    line_btn_path = "btn_login_press.png"
-    st.markdown(f"""
-    <div style="margin-top: 12px; margin-bottom: 12px;">
-        <a href="{login_url}">
-            <img src="{line_btn_path}"
-                style="width:220px; max-width:100%; display:block; margin:auto;">
-        </a>
-    </div>
-    """, unsafe_allow_html=True)
+    # ローカルの公式 PNG を base64 化
+    btn_path = Path(__file__).resolve().parent.parent / "btn_login_press.png"
+    line_btn_url = local_image_to_data_url(str(btn_path))
+
+    st.markdown(
+        f"""
+        <div style="margin-top: 12px; margin-bottom: 12px;">
+            <a href="{login_url}">
+                <img src="{line_btn_url}"
+                     style="width:220px; max-width:100%; display:block; margin:auto;">
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # ==============================================================
