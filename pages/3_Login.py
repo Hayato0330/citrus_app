@@ -11,6 +11,8 @@ from streamlit_javascript import st_javascript
 # ==============================================================
 # ページ設定
 # ==============================================================
+st.write("Google/LINE redirect_uri:", st.secrets["LINE_REDIRECT_URI"])
+
 st.set_page_config(
     page_title="ログイン - 柑橘推薦システム",
     page_icon="🍊",
