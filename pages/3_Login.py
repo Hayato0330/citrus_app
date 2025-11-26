@@ -7,6 +7,7 @@ from pathlib import Path
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from streamlit_javascript import st_javascript
+import secrets
 
 # ==============================================================
 # ページ設定
@@ -32,12 +33,11 @@ def local_image_to_data_url(path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 # ==============================================================
-# 背景画像を読み込み
+# 背景画像
 # ==============================================================
 IMG_PATH = Path(__file__).resolve().parent.parent / "top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
-# 背景CSS
 st.markdown(
     f"""
     <style>
@@ -88,6 +88,7 @@ col1, col2 = st.columns(2)
 GOOGLE_CLIENT_ID = "317782524858-5q1rgg3e4dgr0ej3lqi2ri048ag9q4lh.apps.googleusercontent.com"
 ALLOWED_DOMAIN = "gl.cc.uec.ac.jp"
 
+
 # ==============================================================
 # Google ログイン
 # ==============================================================
@@ -124,7 +125,7 @@ with col1:
         height=200
     )
 
-# JS → Python（Google id_token）
+# Google token → Python
 token = st_javascript(
     "await new Promise(resolve => { window.addEventListener('message', e => resolve(e.data.id_token)); });"
 )
@@ -136,12 +137,10 @@ if token:
             token, requests.Request(), GOOGLE_CLIENT_ID, clock_skew_in_seconds=30
         )
 
-        # 発行元確認
         if idinfo["iss"] not in ["accounts.google.com", "https://accounts.google.com"]:
             st.error("Google 以外から発行されたトークンです。")
             st.stop()
 
-        # aud 確認
         if idinfo["aud"] != GOOGLE_CLIENT_ID:
             st.error("クライアントIDが一致しません。GCP 設定を確認してください。")
             st.stop()
@@ -165,27 +164,38 @@ if token:
     except Exception as e:
         st.error(f"Google 認証エラー: {e}")
 
+
 # ==============================================================
-# LINE ログイン（画像を base64 で読み込んで埋め込み）
+# LINE ログイン
 # ==============================================================
 with col2:
     st.markdown("#### LINE でログイン")
 
     def create_line_authorize_url():
         base_url = "https://access.line.me/oauth2/v2.1/authorize"
+
+        # ランダムな state / nonce を生成
+        state_value = secrets.token_urlsafe(16)
+        nonce_value = secrets.token_urlsafe(16)
+
+        # セッションに保存（callback で検証）
+        st.session_state["line_state"] = state_value
+        st.session_state["line_nonce"] = nonce_value
+
         params = {
             "response_type": "code",
             "client_id": st.secrets["LINE_CHANNEL_ID"],
             "redirect_uri": st.secrets["LINE_REDIRECT_URI"],
-            "state": "random_state_12345",
+            "state": state_value,
             "scope": "profile openid email",
-            "nonce": "random_nonce_abc"
+            "nonce": nonce_value,
         }
+
         return base_url + "?" + urllib.parse.urlencode(params)
 
     login_url = create_line_authorize_url()
 
-    # ローカルの公式 PNG を base64 化
+    # ローカルボタン画像を base64 化
     btn_path = Path(__file__).resolve().parent.parent / "btn_login_press.png"
     line_btn_url = local_image_to_data_url(str(btn_path))
 
@@ -201,7 +211,7 @@ with col2:
         unsafe_allow_html=True
     )
 
-
 # ==============================================================
 # END
 # ==============================================================
+

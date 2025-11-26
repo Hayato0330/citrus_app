@@ -4,7 +4,6 @@ import streamlit as st
 import requests
 import jwt
 
-st.write("このページの本当のURL → ", st.context.headers.get("x-streamlit-page-path"))
 st.set_page_config(page_title="LINEログイン処理", page_icon="🔑", layout="centered")
 st.markdown("## LINEログイン処理中...")
 
@@ -18,6 +17,22 @@ if "code" not in query_params:
     st.stop()
 
 code = query_params["code"]
+state_param = query_params.get("state", "")
+
+# ==============================================================
+# state チェック（CSRF防止）
+# ==============================================================
+expected_state = st.session_state.get("line_state")
+
+if expected_state is None:
+    st.error("セッションに state が残っていません。ログイン画面から再試行してください。")
+    st.stop()
+
+if state_param != expected_state:
+    st.error("state が一致しません（セキュリティエラー）。")
+    st.write("受け取った state:", state_param)
+    st.write("期待した state:", expected_state)
+    st.stop()
 
 # ==============================================================
 # Secrets 読み込み
@@ -51,12 +66,12 @@ if "id_token" not in token_json:
 id_token_jwt = token_json["id_token"]
 
 # ==============================================================
-# HS256 で IDトークンを検証（これが LINE Web Login の正しい方法）
+# IDトークン検証（HS256）
 # ==============================================================
 try:
     payload = jwt.decode(
         id_token_jwt,
-        LINE_CLIENT_SECRET,        # ← HS256 の秘密鍵は channel secret！
+        LINE_CLIENT_SECRET,        # HS256 の秘密鍵
         algorithms=["HS256"],
         audience=LINE_CLIENT_ID,
         issuer="https://access.line.me"
