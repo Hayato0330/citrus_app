@@ -4,8 +4,8 @@ import streamlit as st
 import requests
 import jwt
 
+st.write("このページの本当のURL → ", st.context.headers.get("x-streamlit-page-path"))
 st.set_page_config(page_title="LINEログイン処理", page_icon="🔑", layout="centered")
-st.write("現在アクセスされているURL:", st.request.url)
 st.markdown("## LINEログイン処理中...")
 
 # ==============================================================
