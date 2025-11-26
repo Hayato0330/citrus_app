@@ -12,7 +12,6 @@ import secrets
 # ==============================================================
 # ページ設定
 # ==============================================================
-st.write("LINE 認可URL:", login_url)
 st.set_page_config(
     page_title="ログイン - 柑橘推薦システム",
     page_icon="🍊",
@@ -193,7 +192,7 @@ with col2:
         return base_url + "?" + urllib.parse.urlencode(params)
 
     login_url = create_line_authorize_url()
-
+    st.write("LINE 認可URL:", login_url)
     # ローカルボタン画像を base64 化
     btn_path = Path(__file__).resolve().parent.parent / "btn_login_press.png"
     line_btn_url = local_image_to_data_url(str(btn_path))
