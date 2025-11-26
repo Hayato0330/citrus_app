@@ -5,7 +5,7 @@ import requests
 import jwt
 
 st.set_page_config(page_title="LINEログイン処理", page_icon="🔑", layout="centered")
-
+st.write("現在アクセスされているURL:", st.request.url)
 st.markdown("## LINEログイン処理中...")
 
 # ==============================================================
