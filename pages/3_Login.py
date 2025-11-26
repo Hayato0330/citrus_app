@@ -180,20 +180,26 @@ with col2:
         st.session_state["line_state"] = state_value
         st.session_state["line_nonce"] = nonce_value
 
+        # scope は手動で URL エンコード（重要）
         params = {
             "response_type": "code",
             "client_id": st.secrets["LINE_CHANNEL_ID"],
             "redirect_uri": st.secrets["LINE_REDIRECT_URI"],
             "state": state_value,
-            "scope": "profile openid email",
+            "scope": "profile%20openid%20email",
             "nonce": nonce_value,
         }
 
-        return base_url + "?" + urllib.parse.urlencode(params)
+        # urlencode を使うと scope が壊れるため、手動で連結
+        query = "&".join([f"{k}={v}" for k, v in params.items()])
+        return f"{base_url}?{query}"
 
     login_url = create_line_authorize_url()
+
+    # デバッグ用に認可URLを表示
     st.write("LINE 認可URL:", login_url)
-    # ローカルボタン画像を base64 化
+
+    # ローカルの公式LINEボタン画像を base64 化
     btn_path = Path(__file__).resolve().parent.parent / "btn_login_press.png"
     line_btn_url = local_image_to_data_url(str(btn_path))
 
@@ -208,6 +214,7 @@ with col2:
         """,
         unsafe_allow_html=True
     )
+
 
 # ==============================================================
 # END
