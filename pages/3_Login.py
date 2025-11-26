@@ -12,7 +12,6 @@ import secrets
 # ==============================================================
 # ページ設定
 # ==============================================================
-st.write("Google/LINE redirect_uri:", st.secrets["LINE_REDIRECT_URI"])
 
 st.set_page_config(
     page_title="ログイン - 柑橘推薦システム",
@@ -74,7 +73,7 @@ st.markdown("""
     font-size: 0.95rem;
     margin-top: 0.5rem;
 ">
-※ Googleログインの場合、 電通大UECクラウドアカウント（@gl.cc.uec.ac.jp）のみ利用可能です。
+※ Googleログインの場合、 UECクラウドアカウント（@gl.cc.uec.ac.jp）のみ利用可能です。
 </div>
 """, unsafe_allow_html=True)
 

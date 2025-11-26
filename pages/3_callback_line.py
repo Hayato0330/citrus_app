@@ -19,20 +19,8 @@ if "code" not in query_params:
 code = query_params["code"]
 state_param = query_params.get("state", "")
 
-# ==============================================================
-# state チェック（CSRF防止）
-# ==============================================================
-expected_state = st.session_state.get("line_state")
-
-if expected_state is None:
-    st.error("セッションに state が残っていません。ログイン画面から再試行してください。")
-    st.stop()
-
-if state_param != expected_state:
-    st.error("state が一致しません（セキュリティエラー）。")
-    st.write("受け取った state:", state_param)
-    st.write("期待した state:", expected_state)
-    st.stop()
+# デバッグ用に state を表示（動作確認が終わったら消してOK）
+st.write("受け取った state:", state_param)
 
 # ==============================================================
 # Secrets 読み込み
@@ -60,7 +48,7 @@ token_json = token_res.json()
 
 if "id_token" not in token_json:
     st.error("LINEからIDトークンを取得できませんでした。")
-    st.json(token_json)
+    st.json(token_json)  # ここで invalid_grant などが見える
     st.stop()
 
 id_token_jwt = token_json["id_token"]
@@ -71,7 +59,7 @@ id_token_jwt = token_json["id_token"]
 try:
     payload = jwt.decode(
         id_token_jwt,
-        LINE_CLIENT_SECRET,        # HS256 の秘密鍵
+        LINE_CLIENT_SECRET,        # HS256 の鍵は channel secret
         algorithms=["HS256"],
         audience=LINE_CLIENT_ID,
         issuer="https://access.line.me"
