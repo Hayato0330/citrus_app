@@ -135,10 +135,10 @@ def label_map(k: str) -> str:
 st.title("🍊 柑橘類の推薦システム")
 # 説明キャプションは削除（上に詰める）
 
-# セッション状態の初期化
+# セッション状態の初期化（季節 val_season を削除）
 for key in [
     "val_brix", "val_acid", "val_bitterness", "val_aroma", "val_moisture", "val_texture",
-    "val_season", "right_output",
+    "right_output",
 ]:
     st.session_state.setdefault(key, None)
 
@@ -168,26 +168,7 @@ def scale_buttons(label: str, state_key: str):
             ):
                 _immediate_select(state_key, i)
 
-def season_buttons(state_key: str = "val_season"):
-    """
-    季節の4ボタン．選択中のみ primary．
-    クリック直後に rerun して即時色反映する．
-    """
-    st.markdown('<div class="season-section">', unsafe_allow_html=True)
-    st.write("季節の希望")
-    cols = st.columns(4)
-    cur = st.session_state[state_key]
-    seasons = [("winter", "冬"), ("spring", "春"), ("summer", "夏"), ("autumn", "秋")]
-    for (code, label), c in zip(seasons, cols):
-        with c:
-            if st.button(
-                label,
-                key=f"btn_season_{code}",
-                type=("primary" if (cur == code) else "secondary"),
-                use_container_width=True,
-            ):
-                _immediate_select(state_key, code)
-    st.markdown("</div>", unsafe_allow_html=True)
+# 季節ボタンは不要になったため削除済み
 
 # レイアウト：左＝入力（見出しなしで上詰め），右＝操作表示
 left, right = st.columns(2, gap="large")
@@ -210,8 +191,7 @@ with left:
         scale_buttons("ジューシーさ", "val_moisture")
         scale_buttons("食感", "val_texture")
 
-    # 季節ボタン（下余白は極小）
-    season_buttons("val_season")
+    # 季節ボタンは表示しない
 
 with right:
     st.subheader("柑橘ソムリエのヒント")
@@ -256,16 +236,17 @@ with right:
 # ===== 全幅の完了ボタン（左右カラムの外でページ全体に伸ばす） =====
 st.markdown('<div class="submit-row">', unsafe_allow_html=True)
 if st.button("完了", type="primary", use_container_width=True, key="btn_submit_full"):
-    # 入力検証
+    # 入力検証（季節 val_season はチェック対象から除外）
     missing = [
         k for k in [
             "val_brix", "val_acid", "val_bitterness", "val_aroma",
-            "val_moisture", "val_texture", "val_season", "right_output",
+            "val_moisture", "val_texture", "right_output",
         ] if st.session_state.get(k) in (None, "")
     ]
     if missing:
         st.error("未入力の項目があるため送信できない．右側のボタン出力を含め，全項目を選択・出力してから再度実行すること．")
     else:
+        # D1ログ：季節の項目は送信しない
         input_dict = {
             "brix": int(st.session_state.val_brix),
             "acid": int(st.session_state.val_acid),
@@ -273,7 +254,6 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "aroma": int(st.session_state.val_aroma),
             "moisture": int(st.session_state.val_moisture),
             "texture": int(st.session_state.val_texture),
-            "season_pref": st.session_state.val_season,
         }
         _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
         st.success("入力値と出力値をログとして送信した．")
@@ -283,4 +263,3 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ・本UIではデータの読み込みおよび推薦結果の表示は行わない（要件）．
 # ・ログは「完了」押下時のみ送信し，未入力がある場合は送信しない（要件）．
 # ・重み・表示件数の項目は削除している（要件）．
-

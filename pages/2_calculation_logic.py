@@ -1,5 +1,6 @@
 # calculation_logic.py
 # app.pyをメインの関数として，ページ遷移を行っています．現在は1_top.pyから，2_input.pyへの遷移が可能になっています．ここから2_input.pyから，3_output_nologin.pyへの遷移をapp.pyのなかで行いたいです．そのために，2_input.pyで行える入力(甘さ，酸味，苦味，香り，ジューシーさ，食感のユーザーの好みの1~6の整数値と，希望の季節を表す(winter, spring, summer, autumnのいずれか)の文字列)を2_calculation_logic.pyの入力として与えます．2_calculation_logic.pyで得られるIDの出力を3_output_nologin.pyの入力として与え，csvファイルを読み込む
+# app.pyをメインの関数として，ページ遷移を行っています．現在は1_top.pyから，2_input.pyへの遷移が可能になっています．ここから2_input.pyから，3_output_nologin.pyへの遷移をapp.pyのなかで行いたいです．そのために，2_input.pyで行える入力(甘さ，酸味，苦味，香り，ジューシーさ，食感のユーザーの好みの1~6の整数値を2_calculation_logic.pyの入力として与えます．2_calculation_logic.pyで得られるIDの出力を3_output_nologin.pyの入力として与え，R2 データベースを読み込むことで，柑橘の種類を見えるようにしてください．
 
 import math
 from typing import List, Dict
@@ -191,12 +192,11 @@ def calculate_top3_ids(
     aroma: int,
     juiciness: int,
     texture: int,
-    season_pref: str,
     *,
     r2_key: str | None = None,
 ) -> List[int]:
     """
-    ユーザー嗜好と季節希望から，上位3品種のIDリストを返すメイン関数．
+    ユーザー嗜好から，上位3品種のIDリストを返すメイン関数．
 
     引数：
         sweetness  : 甘さ（1〜6）
@@ -205,7 +205,6 @@ def calculate_top3_ids(
         aroma      : 香り（1〜6）
         juiciness  : ジューシーさ（1〜6）
         texture    : 食感（1〜6）
-        season_pref: "winter", "spring", "summer", "autumn" のいずれか
         r2_key     : R2 のオブジェクトキー（省略時は secrets["r2_key"] を使用）
 
     戻り値：
@@ -223,10 +222,11 @@ def calculate_top3_ids(
     # 重みはとりあえず全て1．必要になったら引数に出してもよい
     weights = {k: 1.0 for k in FEATURES}
 
+    # 季節入力は廃止したため、season_pref は常に空文字として扱う
     ranked = score_items(
         df,
         user_vec,
-        season_pref=season_pref,
+        season_pref="",
         weights=weights,
     )
 
