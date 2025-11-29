@@ -20,7 +20,7 @@ def local_image_to_data_url(path: str) -> str:
     b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
-IMG_PATH = Path(__file__).resolve().parent.parent / "top_background.png"
+IMG_PATH = Path(__file__).resolve().parent.parent / "other_images/top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
 # ===== CSS =====

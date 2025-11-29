@@ -33,7 +33,7 @@ def local_image_to_data_url(path: str) -> str:
 # ==============================================================
 # 背景画像
 # ==============================================================
-IMG_PATH = Path(__file__).resolve().parent.parent / "top_background.png"
+IMG_PATH = Path(__file__).resolve().parent.parent / "other_images/top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
 st.markdown(
@@ -200,7 +200,7 @@ with col2:
     st.write("LINE 認可URL:", login_url)
 
     # ローカルの公式LINEボタン画像を base64 化
-    btn_path = Path(__file__).resolve().parent.parent / "btn_login_press.png"
+    btn_path = Path(__file__).resolve().parent.parent / "other_images/btn_login_press.png"
     line_btn_url = local_image_to_data_url(str(btn_path))
 
     st.markdown(
