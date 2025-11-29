@@ -1,10 +1,14 @@
 # calculation_logic.py
+# app.pyをメインの関数として，ページ遷移を行っています．現在は1_top.pyから，2_input.pyへの遷移が可能になっています．ここから2_input.pyから，3_output_nologin.pyへの遷移をapp.pyのなかで行いたいです．そのために，2_input.pyで行える入力(甘さ，酸味，苦味，香り，ジューシーさ，食感のユーザーの好みの1~6の整数値と，希望の季節を表す(winter, spring, summer, autumnのいずれか)の文字列)を2_calculation_logic.pyの入力として与えます．2_calculation_logic.pyで得られるIDの出力を3_output_nologin.pyの入力として与え，csvファイルを読み込む
 
 import math
 from typing import List, Dict
+from io import BytesIO
 
 import numpy as np
 import pandas as pd
+import streamlit as st
+import boto3
 
 # 柑橘の特徴量として使うカラム名
 FEATURES = ["brix", "acid", "bitterness", "aroma", "moisture", "texture"]
@@ -63,6 +67,68 @@ def parse_seasons(cell: str) -> List[str]:
     return [s.strip().lower() for s in str(cell).split(",") if s.strip()]
 
 
+# ===== R2 からの読み込み部分（app_old.py と同じ思想） =====
+
+@st.cache_data(ttl=3600)
+def _load_citrus_raw_from_r2(key: str | None = None) -> pd.DataFrame:
+    """
+    Cloudflare R2 から生のCSVを読み込む．
+    secrets.toml の設定は app_old.py と同じものを前提とする．
+    """
+    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        raise RuntimeError(
+            f"R2の接続情報が見つからない．.streamlit/secrets.toml に {missing} を設定すること．"
+        )
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
+        aws_access_key_id=st.secrets["r2_access_key_id"],
+        aws_secret_access_key=st.secrets["r2_secret_access_key"],
+    )
+
+    obj_key = key or st.secrets.get("r2_key")
+    if not obj_key:
+        raise RuntimeError(
+            "R2のオブジェクトキーが未指定である．r2_key を secrets.toml に設定すること．"
+        )
+
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=obj_key)
+    return pd.read_csv(BytesIO(obj["Body"].read()), encoding="utf-8-sig")
+
+
+@st.cache_data
+def _prepare_dataframe(r2_key: str | None = None) -> pd.DataFrame:
+    """
+    R2 からCSVを読み込み，特徴量と season 等を整えた DataFrame を返す．
+    """
+    df = _load_citrus_raw_from_r2(r2_key)
+    df = _standardize_columns(df)
+
+    # 必須カラム確認
+    missing = [c for c in FEATURES if c not in df.columns]
+    if missing:
+        raise KeyError(f"必要カラムが見つからない: {missing} / 取得カラム: {list(df.columns)}")
+
+    # 数値化して1〜6にクリップ
+    for col in FEATURES:
+        df[col] = pd.to_numeric(df[col], errors="coerce").clip(1, 6)
+
+    # season を文字列で用意
+    if "season" not in df.columns:
+        df["season"] = ""
+    df["season"] = df["season"].fillna("").astype(str)
+
+    # 特徴量に欠損がある行は落とす
+    df = df.dropna(subset=FEATURES)
+
+    return df
+
+
+# ===== 類似度計算 =====
+
 def score_items(
     df: pd.DataFrame,
     user_vec: np.ndarray,
@@ -116,35 +182,9 @@ def score_items(
     return out.sort_values(["score", "name"], ascending=[False, True]).reset_index(drop=True)
 
 
-def _prepare_dataframe(csv_path: str) -> pd.DataFrame:
-    """
-    CSVを読み込み，特徴量とseason等を整えたDataFrameを返す．
-    """
-    df = pd.read_csv(csv_path, encoding="utf-8-sig")
-    df = _standardize_columns(df)
-
-    # 必須カラム確認
-    missing = [c for c in FEATURES if c not in df.columns]
-    if missing:
-        raise KeyError(f"必要カラムが見つからない: {missing} / 取得カラム: {list(df.columns)}")
-
-    # 数値化して1〜6にクリップ
-    for col in FEATURES:
-        df[col] = pd.to_numeric(df[col], errors="coerce").clip(1, 6)
-
-    # season を文字列で用意
-    if "season" not in df.columns:
-        df["season"] = ""
-    df["season"] = df["season"].fillna("").astype(str)
-
-    # 特徴量に欠損がある行は落とす
-    df = df.dropna(subset=FEATURES)
-
-    return df
-
+# ===== 外部公開用：上位3品種IDを返す関数 =====
 
 def calculate_top3_ids(
-    csv_path: str,
     sweetness: int,
     sourness: int,
     bitterness: int,
@@ -152,12 +192,13 @@ def calculate_top3_ids(
     juiciness: int,
     texture: int,
     season_pref: str,
+    *,
+    r2_key: str | None = None,
 ) -> List[int]:
     """
     ユーザー嗜好と季節希望から，上位3品種のIDリストを返すメイン関数．
 
     引数：
-        csv_path   : 特徴量CSVファイルへのパス
         sweetness  : 甘さ（1〜6）
         sourness   : 酸味（1〜6）
         bitterness : 苦味（1〜6）
@@ -165,11 +206,13 @@ def calculate_top3_ids(
         juiciness  : ジューシーさ（1〜6）
         texture    : 食感（1〜6）
         season_pref: "winter", "spring", "summer", "autumn" のいずれか
+        r2_key     : R2 のオブジェクトキー（省略時は secrets["r2_key"] を使用）
 
     戻り値：
         上位3件（行数が3未満ならその分だけ）の品種IDを格納したリスト
     """
-    df = _prepare_dataframe(csv_path)
+    # R2 から特徴量を取得
+    df = _prepare_dataframe(r2_key)
 
     # ユーザー嗜好ベクトル（app_old.py と同じ並び）
     user_vec = np.array(
