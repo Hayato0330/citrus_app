@@ -1,4 +1,3 @@
-# app.py
 import runpy
 import streamlit as st
 
@@ -32,3 +31,7 @@ elif route == "input":
         if st.button("← トップへ戻る", use_container_width=True):
             st.session_state["route"] = "top"
             st.rerun()
+
+elif route == "result":
+    # 3_output_nologin.py を実行（結果ページ）
+    runpy.run_path("pages/3_output_nologin.py")
