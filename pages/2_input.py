@@ -25,6 +25,17 @@ st.markdown(
         background-color: #FFE4B5;
     }
 
+    /* Streamlit のデフォルトヘッダー削除 */
+    header[data-testid="stHeader"] {
+        background-color: #FFE4B5 !important;   /* ← 完全削除したい場合は 'background: none' */
+        color: #FFE4B5 !important;
+    }
+
+    /* ヘッダーの影も消す */
+    header[data-testid="stHeader"]::before {
+        box-shadow: none !important;
+    }
+
     /* 全体の縦余白を詰める */
     .block-container { padding-top: 0.4rem; padding-bottom: 0.6rem; }
 
