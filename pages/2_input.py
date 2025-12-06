@@ -25,15 +25,32 @@ st.markdown(
         background-color: #FFE4B5;
     }
 
-    /* Streamlit のデフォルトヘッダー削除 */
+    /* --- Streamlit ヘッダー完全削除 --- */
     header[data-testid="stHeader"] {
-        background-color: #FFE4B5 !important;   /* ← 完全削除したい場合は 'background: none' */
-        color: #FFE4B5 !important;
+        display: none !important;
     }
 
-    /* ヘッダーの影も消す */
+    /* --- ヘッダー領域の影や隙間の残骸も除去 --- */
     header[data-testid="stHeader"]::before {
+        display: none !important;
         box-shadow: none !important;
+    }
+
+    /* --- 最上部の白帯対策：背景をオレンジに統一 --- */
+    html, body, #root,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    [data-testid="stSidebar"] {
+        background-color: #FFE4B5 !important;
+    }
+
+    /* --- ツールバーの空白行を強制的に消す（念のため） --- */
+    [data-testid="stToolbar"] {
+        display: none !important;
+        height: 0px !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
     /* 全体の縦余白を詰める */
