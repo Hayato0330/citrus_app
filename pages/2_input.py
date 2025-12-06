@@ -257,8 +257,11 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
         }
         _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
 
-        # ここでは遷移せず，「入力が揃った」ことだけを app.py に知らせる
+        # ★ ここから追加：app.py に渡すための情報をセッションにセット
+        st.session_state["user_preferences"] = input_dict
         st.session_state["input_submitted"] = True
+
+        st.success("入力値と出力値をログとして送信した．")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
