@@ -25,6 +25,34 @@ st.markdown(
         background-color: #FFE4B5;
     }
 
+    /* --- Streamlit ヘッダー完全削除 --- */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* --- ヘッダー領域の影や隙間の残骸も除去 --- */
+    header[data-testid="stHeader"]::before {
+        display: none !important;
+        box-shadow: none !important;
+    }
+
+    /* --- 最上部の白帯対策：背景をオレンジに統一 --- */
+    html, body, #root,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    [data-testid="stSidebar"] {
+        background-color: #FFE4B5 !important;
+    }
+
+    /* --- ツールバーの空白行を強制的に消す（念のため） --- */
+    [data-testid="stToolbar"] {
+        display: none !important;
+        height: 0px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
     /* 全体の縦余白を詰める */
     .block-container { padding-top: 0.4rem; padding-bottom: 0.6rem; }
 
@@ -95,9 +123,9 @@ ALIASES = {
 }
 
 # ===== ユーティリティ =====
-def _append_simple_log(input_dict: dict, output_value: str | None) -> None:
+def _append_simple_log(input_dict: dict) -> None:
     """
-    入力値と出力値だけをログPOSTする．Secrets未設定ならスキップする．
+    入力値だけをログPOSTする．Secrets未設定ならスキップする．
     直近の重複送信は抑止する．
     """
     url = st.secrets.get("log_api_url")
@@ -109,8 +137,10 @@ def _append_simple_log(input_dict: dict, output_value: str | None) -> None:
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
         "input_json": input_dict,
+        # result フィールドは送信しない（DB の result カラムには何も保存しない）
     }
-    key = str(hash(str(payload["input_json"]) + str(payload["result"])))
+    # result を含めず，入力のみで重複判定を行う
+    key = str(hash(str(payload["input_json"])))
     if st.session_state.get("last_log_key") == key:
         return
 
@@ -191,8 +221,6 @@ with left:
         scale_buttons("ジューシーさ", "val_moisture")
         scale_buttons("食感", "val_texture")
 
-    # 季節ボタンは表示しない
-
 with right:
     st.subheader("柑橘ソムリエのヒント")
 
@@ -236,17 +264,17 @@ with right:
 # ===== 全幅の完了ボタン（左右カラムの外でページ全体に伸ばす） =====
 st.markdown('<div class="submit-row">', unsafe_allow_html=True)
 if st.button("完了", type="primary", use_container_width=True, key="btn_submit_full"):
-    # 入力検証（季節 val_season はチェック対象から除外）
+    # 入力検証（季節 val_season と right_output はチェック対象から除外）
     missing = [
         k for k in [
             "val_brix", "val_acid", "val_bitterness", "val_aroma",
-            "val_moisture", "val_texture", "right_output",
+            "val_moisture", "val_texture",
         ] if st.session_state.get(k) in (None, "")
     ]
     if missing:
-        st.error("未入力の項目があるため送信できない．右側のボタン出力を含め，全項目を選択・出力してから再度実行すること．")
+        st.error("未入力の項目があるため送信できない．全項目を選択してから再度実行すること．")
     else:
-        # D1ログ：季節の項目は送信しない
+        # D1ログ：季節・ヒント文の項目は送信しない
         input_dict = {
             "brix": int(st.session_state.val_brix),
             "acid": int(st.session_state.val_acid),
@@ -255,8 +283,14 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "moisture": int(st.session_state.val_moisture),
             "texture": int(st.session_state.val_texture),
         }
-        _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
-        st.success("入力値と出力値をログとして送信した．")
+        _append_simple_log(input_dict=input_dict)
+
+        # ★ ここから追加：app.py に渡すための情報をセッションにセット
+        st.session_state["user_preferences"] = input_dict
+        st.session_state["input_submitted"] = True
+
+        st.success("入力値をログとして送信した．")
+
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ===== 注意事項 =====
