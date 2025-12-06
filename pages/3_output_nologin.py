@@ -1,4 +1,3 @@
-# 3_output_nologion.py
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -6,7 +5,7 @@ from urllib.parse import quote
 import textwrap
 import base64
 from pathlib import Path
-
+import runpy  # ← 追加：2_calculation_logic から R2 読み込み関数を使う
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -120,33 +119,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-# ===== データ処理関数 =====
-def load_data(csv_path: str) -> pd.DataFrame | None:
-    try:
-        return pd.read_csv(csv_path)
-    except Exception:
-        return None
-
-def score_items(df: pd.DataFrame, user_vec: np.ndarray,
-                season_pref: str = "", season_boost: float = 0.03) -> pd.DataFrame:
-    feature_cols = ["brix", "acid", "bitter", "smell", "moisture", "elastic"]
-    if not all(col in df.columns for col in feature_cols):
-        st.error("CSVに必要な特徴量カラムが不足しています。")
-        st.stop()
-    X = df[feature_cols].astype(float).values
-    def normalize(v): return v / (np.linalg.norm(v) + 1e-8)
-    user_vec = normalize(user_vec)
-    Xn = np.array([normalize(x) for x in X])
-    scores = Xn @ user_vec
-    if season_pref and "season" in df.columns:
-        mask = df["season"].astype(str).str.contains(season_pref)
-        scores += mask.astype(float) * season_boost
-    out = df.copy()
-    out["score"] = scores
-    return out.sort_values("score", ascending=False).reset_index(drop=True)
-
-
 # ===== SNSシェア =====
 def build_twitter_share(names: list[str]) -> str:
     ranked_text = "\n".join([f"{i+1}位 {n}" for i, n in enumerate(names)])
@@ -155,59 +127,50 @@ def build_twitter_share(names: list[str]) -> str:
     text = quote(f"おすすめの柑橘 🍊\n{ranked_text}\n#柑橘おすすめ\n{app_url}")
     return f"https://twitter.com/intent/tweet?text={text}"
 
-
-
-
 # ===== データ取得 =====
-ranked = st.session_state.get("ranked_results")
 TOPK = 3
 
-if ranked is None:
-    df = load_data("citrus_features.csv")
-    if df is None:
-        # ダミーデータ
-        df = pd.DataFrame({
-            "Item_name": ["温州みかん", "ポンカン", "はっさく"],
-            "brix": [5, 4, 3],
-            "acid": [2, 3, 4],
-            "bitter": [1, 2, 3],
-            "smell": [3, 4, 2],
-            "moisture": [5, 4, 3],
-            "elastic": [2, 3, 4],
-            "description": ["甘くて食べやすい定番みかん", "香り豊かで人気の柑橘", "さっぱりとした味わい"],
-            "image_path": [
-                "https://via.placeholder.com/200x150?text=Mikan",
-                "https://via.placeholder.com/200x150?text=Ponkan",
-                "https://via.placeholder.com/200x150?text=Hassaku"
-            ]
-        })
-    user_vec = np.array([2, 3, 2, 3, 4, 5], dtype=float)
-    ranked = score_items(df, user_vec)
-    st.session_state.ranked_results = ranked
+top_ids = st.session_state.get("top_ids")
+if not top_ids:
+    st.error("診断結果が見つからないため，トップページからやり直してほしい．")
+    with st.sidebar:
+        if st.button("← トップへ戻る", use_container_width=True):
+            st.session_state["route"] = "top"
+            st.rerun()
+    st.stop()
 
+# 2_calculation_logic.py から R2 読み込み関数を取得
+ns = runpy.run_path("2_calculation_logic.py")
+prepare_df = ns["_prepare_dataframe"]
+
+df_all = prepare_df()
+# ID でフィルタして，入力時の順位順に並べる
+df_sel = df_all[df_all["id"].isin(top_ids)].copy()
+df_sel["__order"] = pd.Categorical(df_sel["id"], categories=top_ids, ordered=True)
+df_sel = df_sel.sort_values("__order")
 
 # ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果（ゲスト表示）")
 
-top_items = ranked.head(TOPK)
+top_items = df_sel.head(TOPK)
 
 cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
-
 def render_card(i, row):
-    name = getattr(row, "Item_name", "不明")
-    desc = getattr(row, "description", "")
-    image_url = getattr(row, "image_path", None) or "https://via.placeholder.com/200x150?text=No+Image"
-    score_pct = float(getattr(row, "score", 0.0)) * 100
+    name = getattr(row, "name", "不明")
+    # 説明文は常に「未設定」
+    desc = "未設定"
+    # 画像パスは空欄のまま
+    image_url = ""
+
     html = f"""
     <div class="card">
       <h2>{i}. {name}</h2>
       <div style="display:flex;gap:20px;align-items:flex-start;">
         <div style="flex:1;">
           <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-          <p>マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
           <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
         <div style="flex:1;text-align:center;">
@@ -235,7 +198,6 @@ def render_card(i, row):
     """
     st.markdown(html, unsafe_allow_html=True)
 
-
 # カード配置
 for i, row in enumerate(top_items.itertuples(), start=1):
     with quadrants[i - 1]:
@@ -243,7 +205,7 @@ for i, row in enumerate(top_items.itertuples(), start=1):
 
 # === 右下（Xシェア + 新規登録導線） ===
 with quadrants[3]:
-    names = [getattr(r, "Item_name", "不明") for r in top_items.itertuples()]
+    names = [getattr(r, "name", "不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
     st.markdown(f"""
     <div class="card" style="text-align:center;">
@@ -261,10 +223,10 @@ with quadrants[3]:
     </div>
     """, unsafe_allow_html=True)
 
-st.caption("※ マッチ度は嗜好との近さを % 表記。季節一致がある場合は加点されます。")
+# マッチ度のキャプションは削除済み
+
 # === サイドバーに戻るボタン ===
 with st.sidebar:
     if st.button("← トップへ戻る", use_container_width=True):
         st.session_state["route"] = "top"
         st.rerun()
-

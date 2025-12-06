@@ -109,7 +109,9 @@ def _append_simple_log(input_dict: dict, output_value: str | None) -> None:
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
         "input_json": input_dict,
+        "result": output_value,
     }
+    # result キーをちゃんと payload に含めた上で，重複判定に使う
     key = str(hash(str(payload["input_json"]) + str(payload["result"])))
     if st.session_state.get("last_log_key") == key:
         return
@@ -191,8 +193,6 @@ with left:
         scale_buttons("ジューシーさ", "val_moisture")
         scale_buttons("食感", "val_texture")
 
-    # 季節ボタンは表示しない
-
 with right:
     st.subheader("柑橘ソムリエのヒント")
 
@@ -256,7 +256,10 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "texture": int(st.session_state.val_texture),
         }
         _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
-        st.success("入力値と出力値をログとして送信した．")
+
+        # ここでは遷移せず，「入力が揃った」ことだけを app.py に知らせる
+        st.session_state["input_submitted"] = True
+
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ===== 注意事項 =====
