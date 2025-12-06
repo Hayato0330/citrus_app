@@ -95,9 +95,9 @@ ALIASES = {
 }
 
 # ===== ユーティリティ =====
-def _append_simple_log(input_dict: dict, output_value: str | None) -> None:
+def _append_simple_log(input_dict: dict) -> None:
     """
-    入力値と出力値だけをログPOSTする．Secrets未設定ならスキップする．
+    入力値だけをログPOSTする．Secrets未設定ならスキップする．
     直近の重複送信は抑止する．
     """
     url = st.secrets.get("log_api_url")
@@ -109,10 +109,10 @@ def _append_simple_log(input_dict: dict, output_value: str | None) -> None:
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
         "input_json": input_dict,
-        "result": output_value,
+        # result フィールドは送信しない（DB の result カラムには何も保存しない）
     }
-    # result キーをちゃんと payload に含めた上で，重複判定に使う
-    key = str(hash(str(payload["input_json"]) + str(payload["result"])))
+    # result を含めず，入力のみで重複判定を行う
+    key = str(hash(str(payload["input_json"])))
     if st.session_state.get("last_log_key") == key:
         return
 
@@ -236,17 +236,17 @@ with right:
 # ===== 全幅の完了ボタン（左右カラムの外でページ全体に伸ばす） =====
 st.markdown('<div class="submit-row">', unsafe_allow_html=True)
 if st.button("完了", type="primary", use_container_width=True, key="btn_submit_full"):
-    # 入力検証（季節 val_season はチェック対象から除外）
+    # 入力検証（季節 val_season と right_output はチェック対象から除外）
     missing = [
         k for k in [
             "val_brix", "val_acid", "val_bitterness", "val_aroma",
-            "val_moisture", "val_texture", "right_output",
+            "val_moisture", "val_texture",
         ] if st.session_state.get(k) in (None, "")
     ]
     if missing:
-        st.error("未入力の項目があるため送信できない．右側のボタン出力を含め，全項目を選択・出力してから再度実行すること．")
+        st.error("未入力の項目があるため送信できない．全項目を選択してから再度実行すること．")
     else:
-        # D1ログ：季節の項目は送信しない
+        # D1ログ：季節・ヒント文の項目は送信しない
         input_dict = {
             "brix": int(st.session_state.val_brix),
             "acid": int(st.session_state.val_acid),
@@ -255,13 +255,13 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "moisture": int(st.session_state.val_moisture),
             "texture": int(st.session_state.val_texture),
         }
-        _append_simple_log(input_dict=input_dict, output_value=st.session_state.right_output)
+        _append_simple_log(input_dict=input_dict)
 
         # ★ ここから追加：app.py に渡すための情報をセッションにセット
         st.session_state["user_preferences"] = input_dict
         st.session_state["input_submitted"] = True
 
-        st.success("入力値と出力値をログとして送信した．")
+        st.success("入力値をログとして送信した．")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
