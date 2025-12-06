@@ -140,7 +140,7 @@ if not top_ids:
     st.stop()
 
 # 2_calculation_logic.py から R2 読み込み関数を取得
-ns = runpy.run_path("2_calculation_logic.py")
+ns = runpy.run_path("pages/2_calculation_logic.py")
 prepare_df = ns["_prepare_dataframe"]
 
 df_all = prepare_df()
