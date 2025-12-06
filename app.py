@@ -48,7 +48,7 @@ elif route == "input":
             st.error(f"入力値の取得に失敗した．もう一度入力してほしい．（詳細: {e}）")
         else:
             # 計算ロジックを読み込んで top3 ID を取得
-            logic_ns = runpy.run_path("2_calculation_logic.py")  # :contentReference[oaicite:2]{index=2}
+            logic_ns = runpy.run_path("pages/2_calculation_logic.py")  # :contentReference[oaicite:2]{index=2}
             calculate_top3_ids = logic_ns["calculate_top3_ids"]
 
             try:
