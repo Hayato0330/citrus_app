@@ -75,9 +75,6 @@ user_name = payload.get("name", "LINEユーザー")
 email = payload.get("email", "")
 picture = payload.get("picture", "")
 
-# ==============================================================
-# セッションに保存
-# ==============================================================
 st.session_state.update({
     "user_logged_in": True,
     "user_name": user_name,
@@ -86,4 +83,7 @@ st.session_state.update({
 })
 
 st.success(f"LINEログイン成功！ようこそ {user_name} さん！")
-st.rerun()
+
+# ✨ ここを変
+from streamlit import switch_page
+st.switch_page("pages/3_output_login.py")
