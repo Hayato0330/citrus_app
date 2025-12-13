@@ -43,10 +43,15 @@ html, body, [data-testid="stAppViewContainer"]{
   font-family: "Plus Jakarta Sans", sans-serif;
 }
 .hero{
-  min-height: 90vh;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-height: auto;                 /* 高さ固定を解除 */
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;       /* 上寄せ */
   text-align:center;
   color:#1f1f1f;
+  padding-top: 6vh;                 /* 上に少し余白だけ入れる */
+  padding-bottom: 4vh;
 }
 .btn{
   font-weight:800;
