@@ -3,6 +3,7 @@ import streamlit as st
 import base64
 from pathlib import Path
 import secrets
+import urllib.parse
 
 # ==============================================================
 # ページ設定
@@ -56,13 +57,17 @@ st.markdown("## ログイン - 柑橘類の推薦システム")
 st.markdown("### LINEでログインしてください")
 
 # ==============================================================
-# LINE 認可URL生成（state / nonce を固定）
+# state / nonce（1セッションで固定）
 # ==============================================================
 if "line_state" not in st.session_state:
     st.session_state["line_state"] = secrets.token_urlsafe(16)
+
 if "line_nonce" not in st.session_state:
     st.session_state["line_nonce"] = secrets.token_urlsafe(16)
 
+# ==============================================================
+# LINE 認可URL生成（★ 正式実装）
+# ==============================================================
 def create_line_authorize_url():
     base_url = "https://access.line.me/oauth2/v2.1/authorize"
 
@@ -71,11 +76,11 @@ def create_line_authorize_url():
         "client_id": st.secrets["LINE_CHANNEL_ID"],
         "redirect_uri": st.secrets["LINE_REDIRECT_URI"],
         "state": st.session_state["line_state"],
-        "scope": "profile%20openid",   # ← email は使わない
+        "scope": "profile openid",   # emailは使わない
         "nonce": st.session_state["line_nonce"],
     }
 
-    query = "&".join([f"{k}={v}" for k, v in params.items()])
+    query = urllib.parse.urlencode(params)
     return f"{base_url}?{query}"
 
 login_url = create_line_authorize_url()
