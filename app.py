@@ -13,6 +13,9 @@ if "user_logged_in" not in st.session_state:
     st.session_state["user_name"] = None
     st.session_state["user_email"] = None
     st.session_state["user_picture"] = None
+    
+if "top_ids" not in st.session_state:
+    st.session_state["top_ids"] = None
 
 # 初期ルートを top に設定
 if "route" not in st.session_state:
@@ -90,6 +93,9 @@ elif route == "input":
 # ===== 結果表示ページ =====
 ## ログイン有
 elif route == "result_login":
+    if not st.session_state.get("top_ids"):
+        st.session_state["route"] = "top"
+        st.rerun()
     runpy.run_path("pages/3_output_login.py")
 
     with st.sidebar:
@@ -99,6 +105,9 @@ elif route == "result_login":
 
 ## ログイン無
 elif route == "result":
+    if not st.session_state.get("top_ids"):
+        st.session_state["route"] = "top"
+        st.rerun()
     runpy.run_path("pages/3_output_nologin.py")
 
     with st.sidebar:

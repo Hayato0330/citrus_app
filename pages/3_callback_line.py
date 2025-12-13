@@ -13,26 +13,38 @@ st.title("LINEログイン処理中...")
 
 params = st.query_params
 
-# 1. エラーが返ってきたとき
+# =========================
+# 1. エラー応答チェック
+# =========================
 if "error" in params:
-    st.error(f"LINEログインに失敗しました: {params.get('error')} - {params.get('error_description')}")
+    st.error(
+        f"LINEログインに失敗しました: "
+        f"{params.get('error')} - {params.get('error_description')}"
+    )
     st.stop()
 
-# 2. code / state が無い場合
+# =========================
+# 2. code / state チェック
+# =========================
 if "code" not in params or "state" not in params:
-    st.error("LINEから認証コードまたはstateが返ってきていません。")
+    st.error("LINEから認証コードまたは state が返ってきていません。")
     st.write(dict(params))
     st.stop()
 
 code = params["code"]
 state = params["state"]
 
-# 3. state チェック（CSRF対策）
-if state != st.session_state.get("line_state"):
-    st.error("state の検証に失敗しました。（セッション切れの可能性あり）")
+# =========================
+# 3. state 検証（CSRF対策）
+# =========================
+expected_state = st.session_state.get("line_state")
+if not expected_state or state != expected_state:
+    st.error("state の検証に失敗しました。（セッション切れの可能性）")
     st.stop()
 
-# 4. 認可コード → トークン交換
+# =========================
+# 4. トークン取得
+# =========================
 token_url = "https://api.line.me/oauth2/v2.1/token"
 headers = {"Content-Type": "application/x-www-form-urlencoded"}
 data = {
@@ -44,16 +56,25 @@ data = {
 }
 
 res = requests.post(token_url, headers=headers, data=data)
+
+if res.status_code != 200:
+    st.error(f"トークン取得に失敗しました（HTTP {res.status_code}）")
+    st.json(res.json())
+    st.stop()
+
 token_json = res.json()
+st.write("token_json =", token_json)  # ★一時的デバッグ
 
 if "id_token" not in token_json:
-    st.error("LINEからIDトークンを取得できませんでした。")
-    st.write(token_json)   # ← デバッグ時は中身を必ず確認する
+    st.error("LINEから ID トークンを取得できませんでした。")
+    st.json(token_json)
     st.stop()
 
 id_token_jwt = token_json["id_token"]
 
+# =========================
 # 5. IDトークン検証
+# =========================
 try:
     payload = jwt.decode(
         id_token_jwt,
@@ -66,7 +87,15 @@ except Exception as e:
     st.error(f"IDトークンの検証に失敗しました: {e}")
     st.stop()
 
-# 6. セッションにユーザー情報を保存
+# --- nonce 検証（★重要） ---
+expected_nonce = st.session_state.get("line_nonce")
+if expected_nonce and payload.get("nonce") != expected_nonce:
+    st.error("nonce の検証に失敗しました。")
+    st.stop()
+
+# =========================
+# 6. セッション保存
+# =========================
 st.session_state.update({
     "user_logged_in": True,
     "auth_provider": "line",
@@ -78,6 +107,10 @@ st.session_state.update({
 
 st.success(f"LINEログイン成功！ようこそ {st.session_state['user_name']} さん！")
 
-# 7. ここがポイント：**st.rerun() ではなく 2_input に飛ばす**
+# =========================
+# 7. app.py フローに合流
+# =========================
+st.session_state["route"] = "input"
+
 from streamlit import switch_page
 switch_page("pages/2_input.py")
