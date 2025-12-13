@@ -1,89 +1,83 @@
-# 3_callback_line.py
-
-import streamlit as st
+# pages/3_callback_line.py
 import requests
 import jwt
+import streamlit as st
 
-st.set_page_config(page_title="LINEログイン処理", page_icon="🔑", layout="centered")
-st.markdown("## LINEログイン処理中...")
+st.set_page_config(page_title="LINEログイン処理中", page_icon="🔑")
 
-# ==============================================================
-# クエリ取得
-# ==============================================================
-query_params = st.query_params
-
-if "code" not in query_params:
-    st.error("LINEから認証コードが返ってきていません。")
-    st.stop()
-
-code = query_params["code"]
-state_param = query_params.get("state", "")
-
-# デバッグ用に state を表示（動作確認が終わったら消してOK）
-st.write("受け取った state:", state_param)
-
-# ==============================================================
-# Secrets 読み込み
-# ==============================================================
 LINE_CLIENT_ID = st.secrets["LINE_CHANNEL_ID"]
 LINE_CLIENT_SECRET = st.secrets["LINE_CHANNEL_SECRET"]
-CALLBACK_URL = st.secrets["LINE_REDIRECT_URI"]
+LINE_REDIRECT_URI = st.secrets["LINE_REDIRECT_URI"]
 
-# ==============================================================
-# 認可コード → アクセストークン交換
-# ==============================================================
+st.title("LINEログイン処理中...")
+
+params = st.query_params
+
+# 1. エラーが返ってきたとき
+if "error" in params:
+    st.error(f"LINEログインに失敗しました: {params.get('error')} - {params.get('error_description')}")
+    st.stop()
+
+# 2. code / state が無い場合
+if "code" not in params or "state" not in params:
+    st.error("LINEから認証コードまたはstateが返ってきていません。")
+    st.write(dict(params))
+    st.stop()
+
+code = params["code"]
+state = params["state"]
+
+# 3. state チェック（CSRF対策）
+if state != st.session_state.get("line_state"):
+    st.error("state の検証に失敗しました。（セッション切れの可能性あり）")
+    st.stop()
+
+# 4. 認可コード → トークン交換
 token_url = "https://api.line.me/oauth2/v2.1/token"
 headers = {"Content-Type": "application/x-www-form-urlencoded"}
-
 data = {
     "grant_type": "authorization_code",
     "code": code,
-    "redirect_uri": CALLBACK_URL,
+    "redirect_uri": LINE_REDIRECT_URI,
     "client_id": LINE_CLIENT_ID,
     "client_secret": LINE_CLIENT_SECRET,
 }
 
-token_res = requests.post(token_url, headers=headers, data=data)
-token_json = token_res.json()
+res = requests.post(token_url, headers=headers, data=data)
+token_json = res.json()
 
 if "id_token" not in token_json:
     st.error("LINEからIDトークンを取得できませんでした。")
-    st.json(token_json)  # ここで invalid_grant などが見える
+    st.write(token_json)   # ← デバッグ時は中身を必ず確認する
     st.stop()
 
 id_token_jwt = token_json["id_token"]
 
-# ==============================================================
-# IDトークン検証（HS256）
-# ==============================================================
+# 5. IDトークン検証
 try:
     payload = jwt.decode(
         id_token_jwt,
-        LINE_CLIENT_SECRET,        # HS256 の鍵は channel secret
+        LINE_CLIENT_SECRET,
         algorithms=["HS256"],
         audience=LINE_CLIENT_ID,
-        issuer="https://access.line.me"
+        issuer="https://access.line.me",
     )
 except Exception as e:
-    st.error(f"ID Token の検証に失敗しました: {e}")
+    st.error(f"IDトークンの検証に失敗しました: {e}")
     st.stop()
 
-# ==============================================================
-# ユーザー情報
-# ==============================================================
-user_name = payload.get("name", "LINEユーザー")
-email = payload.get("email", "")
-picture = payload.get("picture", "")
-
+# 6. セッションにユーザー情報を保存
 st.session_state.update({
     "user_logged_in": True,
-    "user_name": user_name,
-    "user_email": email,
-    "user_picture": picture,
+    "auth_provider": "line",
+    "user_id": payload.get("sub"),
+    "user_name": payload.get("name", "LINEユーザー"),
+    "user_email": payload.get("email", ""),
+    "user_picture": payload.get("picture", ""),
 })
 
-st.success(f"LINEログイン成功！ようこそ {user_name} さん！")
+st.success(f"LINEログイン成功！ようこそ {st.session_state['user_name']} さん！")
 
-# ✨ ここを変
+# 7. ここがポイント：**st.rerun() ではなく 2_input に飛ばす**
 from streamlit import switch_page
-st.switch_page("pages/3_output_login.py")
+switch_page("pages/2_input.py")
