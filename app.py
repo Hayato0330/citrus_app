@@ -5,6 +5,15 @@ import streamlit as st
 # アプリ全体のページ設定
 st.set_page_config(page_title="柑橘類の推薦システム", page_icon="🍊", layout="wide")
 
+# ====ログイン有無・ユーザー情報==== By 本間
+if "user_logged_in" not in st.session_state:
+    st.session_state["user_logged_in"] = False
+    st.session_state["auth_provider"] = None
+    st.session_state["user_id"] = None
+    st.session_state["user_name"] = None
+    st.session_state["user_email"] = None
+    st.session_state["user_picture"] = None
+
 # 初期ルートを top に設定
 if "route" not in st.session_state:
     st.session_state["route"] = "top"
@@ -65,7 +74,11 @@ elif route == "input":
             else:
                 # 出力IDをセッションに保存して結果ページへ
                 st.session_state["top_ids"] = top_ids
-                st.session_state["route"] = "result"
+                #.  ログイン有無で結果ページ分岐 By 本間
+                if st.session_state["user_logged_in"]:
+                    st.session_state["route"] = "result_login"
+                else:
+                    st.session_state["route"] = "result"
                 st.rerun()
 
     # サイドバーにトップへ戻るボタン
@@ -75,9 +88,17 @@ elif route == "input":
             st.rerun()
 
 # ===== 結果表示ページ =====
+## ログイン有
+elif route == "result_login":
+    runpy.run_path("pages/3_output_login.py")
+
+    with st.sidebar:
+        if st.button("← 入力に戻る", use_container_width=True):
+            st.session_state["route"] = "input"
+            st.rerun()
+
+## ログイン無
 elif route == "result":
-    # 3_output_nologin.py は st.session_state["top_ids"] を使って
-    # R2 からデータを読み込み，UIを表示する想定
     runpy.run_path("pages/3_output_nologin.py")
 
     with st.sidebar:
