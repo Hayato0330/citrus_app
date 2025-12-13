@@ -46,7 +46,7 @@ elif route == "input":
     # 「完了」ボタンが押され，入力・右側コメントが揃っている場合
     if st.session_state.get("input_submitted"):
         # すぐにフラグを下ろして二重実行を防ぐ
-        st.session_state["input_submitted"] = False
+        # st.session_state["input_submitted"] = False
 
         # 入力値を取得（2_input.py がセッションに格納している前提）
         try:
@@ -77,6 +77,8 @@ elif route == "input":
             else:
                 # 出力IDをセッションに保存して結果ページへ
                 st.session_state["top_ids"] = top_ids
+                # すぐにフラグを下ろして二重実行を防ぐ
+                st.session_state["input_submitted"] = False
                 #.  ログイン有無で結果ページ分岐 By 本間
                 if st.session_state["user_logged_in"]:
                     st.session_state["route"] = "result_login"
