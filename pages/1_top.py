@@ -68,6 +68,24 @@ html, body, [data-testid="stAppViewContainer"]{
   filter: brightness(1.1);
   box-shadow:0 8px 18px rgba(249,128,6,0.3);
 }
+            
+/* ===== Streamlit ヘッダー完全削除 ===== */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+[data-testid="stToolbar"] {
+    display: none !important;
+    height: 0 !important;
+}
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* 念のため最上部の背景を固定 */
+html, body, #root, [data-testid="stAppViewContainer"] {
+    background-color: transparent !important;
+}
+            
 </style>
 """, unsafe_allow_html=True)
 

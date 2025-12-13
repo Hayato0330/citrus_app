@@ -98,6 +98,24 @@ body {
     background-color: #f5f5f5; /* hover時にややグレーで反応 */
     color: #000 !important;    /* hover時も黒を維持 */
 }
+                            
+/* ===== Streamlit ヘッダー完全削除 ===== */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+[data-testid="stToolbar"] {
+    display: none !important;
+    height: 0 !important;
+}
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* 上部余白の白線対策 */
+html, body, #root {
+    background: transparent !important;
+}
+
 </style>
 """), unsafe_allow_html=True)
 # ===== 背景CSS =====
