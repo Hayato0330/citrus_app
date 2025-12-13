@@ -290,6 +290,7 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
         st.session_state["input_submitted"] = True
 
         st.success("入力値をログとして送信した．")
+        st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)
 
