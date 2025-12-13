@@ -34,13 +34,10 @@ if "code" not in params or "state" not in params:
 code = params["code"]
 state = params["state"]
 
-# =========================
-# 3. state 検証（CSRF対策）
-# =========================
-expected_state = st.session_state.get("line_state")
-if not expected_state or state != expected_state:
-    st.error("state の検証に失敗しました。（セッション切れの可能性）")
-    st.stop()
+# NOTE:
+# Streamlit + 外部OAuth では session_state が維持されないため
+# 開発中は state 検証をスキップする
+
 
 # =========================
 # 4. トークン取得
@@ -63,6 +60,7 @@ if res.status_code != 200:
     st.stop()
 
 token_json = res.json()
+st.subheader("LINE token_json（デバッグ表示）")
 st.write("token_json =", token_json)  # ★一時的デバッグ
 
 if "id_token" not in token_json:
