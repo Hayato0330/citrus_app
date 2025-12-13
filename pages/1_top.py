@@ -54,7 +54,7 @@ html, body, [data-testid="stAppViewContainer"]{
   padding-bottom: 4vh;
 }
 .hero h1 {
-  margin-bottom: 3.0rem;   /* ← タイトルとボタンの間隔を広げる */
+  margin-bottom: 7.0rem;   /* ← タイトルとボタンの間隔を広げる */
 }
 .btn{
   font-weight:800;
