@@ -134,6 +134,7 @@ def _append_simple_log(input_dict: dict) -> None:
         return
 
     payload = {
+        "user_id": st.session_state.get("user_id"),  # ★ 追加：ユーザIDも送信 By 本間
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
         "input_json": input_dict,
