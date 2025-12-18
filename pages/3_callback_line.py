@@ -32,6 +32,13 @@ if "code" not in params or "state" not in params:
     st.stop()
 
 code = params["code"]
+
+# ★追加：同じ認可コードを二重に使わない（rerun/再読込対策）
+if st.session_state.get("line_last_code") == code:
+    st.warning("この認可コードはすでに処理済みです。ログイン画面からやり直してください。")
+    st.stop()
+st.session_state["line_last_code"] = code
+
 state = params["state"]
 
 # NOTE:
