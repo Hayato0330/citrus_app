@@ -165,31 +165,54 @@ def build_twitter_share(names: list[str]) -> str:
 
 
 # ===== データ取得 =====
-ranked = st.session_state.get("ranked_results")
+# ===== データ取得（nologin と同じ流儀）=====
+import runpy
+
 TOPK = 3
 
-if ranked is None:
-    df = load_data("citrus_features.csv")
-    if df is None:
-        df = pd.DataFrame({
-            "Item_name": ["温州みかん", "ポンカン", "はっさく"],
-            "brix": [5, 4, 3],
-            "acid": [2, 3, 4],
-            "bitter": [1, 2, 3],
-            "smell": [3, 4, 2],
-            "moisture": [5, 4, 3],
-            "elastic": [2, 3, 4],
-            "description": ["甘くて食べやすい定番みかん", "香り豊かで人気の柑橘", "さっぱりとした味わい"],
-            "image_path": [
-                "https://via.placeholder.com/200x150?text=Mikan",
-                "https://via.placeholder.com/200x150?text=Ponkan",
-                "https://via.placeholder.com/200x150?text=Hassaku"
-            ]
-        })
+top_ids = st.session_state.get("top_ids")
+if not top_ids:
+    st.error("診断結果が見つからないため，トップページからやり直してほしい．")
+    with st.sidebar:
+        if st.button("← トップへ戻る", use_container_width=True):
+            st.session_state["route"] = "top_login" if st.session_state.get("user_logged_in") else "top"
+            st.rerun()
+    st.stop()
 
-    user_vec = np.array([2, 3, 2, 3, 4, 5], dtype=float)
-    ranked = score_items(df, user_vec)
-    st.session_state.ranked_results = ranked
+# 入力値（2_input.py → app.py が session_state に入れてる前提）
+try:
+    user_vec = np.array(
+        [
+            int(st.session_state["val_brix"]),
+            int(st.session_state["val_acid"]),
+            int(st.session_state["val_bitterness"]),
+            int(st.session_state["val_aroma"]),
+            int(st.session_state["val_moisture"]),
+            int(st.session_state["val_texture"]),
+        ],
+        dtype=float,
+    )
+except Exception as e:
+    st.error(f"入力値が見つかりませんでした（詳細: {e}）")
+    st.stop()
+
+# 2_calculation_logic.py のロジックを使う（R2 CSV の整形も同じになる）
+ns = runpy.run_path("pages/2_calculation_logic.py")
+prepare_df = ns["_prepare_dataframe"]
+score_items = ns["score_items"]
+
+df_all = prepare_df()
+
+# score を付ける（match%表示に使う）
+ranked_all = score_items(df_all, user_vec, season_pref="", weights=None)
+
+# top_ids の順序を保持して抽出
+df_sel = ranked_all[ranked_all["id"].isin(top_ids)].copy()
+df_sel["__order"] = pd.Categorical(df_sel["id"], categories=top_ids, ordered=True)
+df_sel = df_sel.sort_values("__order")
+
+top_items = df_sel.head(TOPK)
+
 
 
 # ===== UI =====
