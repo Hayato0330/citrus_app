@@ -112,6 +112,17 @@ st.session_state.update({
 
 st.success(f"LINEログイン成功！ようこそ {st.session_state['user_name']} さん！")
 
-# app.py のルーティングに戻す
-st.session_state["route"] = "top"   # ログイン後トップへ（あなたの設計）
-st.rerun()
+# ★ここから：app.py に戻す（重要）
+st.session_state["route"] = "top"   # app.py の設計に合わせる
+st.query_params.clear()             # code/state をURLから消す（再実行防止）
+
+# ブラウザを / に戻す（= app.py を開かせる）
+st.markdown(
+    """
+    <script>
+      window.location.replace("/");
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+st.stop()
