@@ -33,21 +33,22 @@ if "input_submitted" not in st.session_state:
 route = st.session_state["route"]
 
 # ===== DEBUG（原因特定用：一時的）=====
-st.write("DEBUG route:", st.session_state.get("route"))
-st.write("DEBUG logged_in:", st.session_state.get("user_logged_in"))
+# st.write("DEBUG route:", st.session_state.get("route"))
+# st.write("DEBUG logged_in:", st.session_state.get("user_logged_in"))
 # =====================================
 
-# ===== top ページ =====
+# ===== top ページ（未ログイン）=====
 if route == "top":
-    if st.session_state.get("user_logged_in"):
-        runpy.run_path("pages/1_top_login.py")
-    else:
-        runpy.run_path("pages/1_top.py")
+    runpy.run_path("pages/1_top.py")
 
     if st.session_state.get("navigate_to") == "input":
         st.session_state["route"] = "input"
         del st.session_state["navigate_to"]
         st.rerun()
+
+# ===== top_login ページ（ログイン後トップ）=====
+elif route == "top_login":
+    runpy.run_path("pages/1_top_login.py")
 
 # ===== input ページ =====
 elif route == "input":
