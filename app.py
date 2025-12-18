@@ -35,10 +35,11 @@ route = st.session_state["route"]
 
 # ===== top ページ =====
 if route == "top":
-    # 1_top.py を実行
-    runpy.run_path("pages/1_top.py")  # :contentReference[oaicite:0]{index=0}
+    if st.session_state.get("user_logged_in"):
+        runpy.run_path("pages/1_top_login.py")
+    else:
+        runpy.run_path("pages/1_top.py")
 
-    # top 内のボタンで 2_input へ遷移
     if st.session_state.get("navigate_to") == "input":
         st.session_state["route"] = "input"
         del st.session_state["navigate_to"]

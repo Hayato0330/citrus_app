@@ -102,13 +102,5 @@ st.session_state.update({
     "user_email": payload.get("email", ""),
     "user_picture": payload.get("picture", ""),
 })
-st.write("DEBUG LINE user_id (sub):", payload.get("sub"))
+
 st.success(f"LINEログイン成功！ようこそ {st.session_state['user_name']} さん！")
-
-# =========================
-# 7. app.py フローに合流
-# =========================
-st.session_state["route"] = "input"
-
-from streamlit import switch_page
-switch_page("pages/2_input.py")
