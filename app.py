@@ -5,6 +5,11 @@ import streamlit as st
 # アプリ全体のページ設定
 st.set_page_config(page_title="柑橘類の推薦システム", page_icon="🍊", layout="wide")
 
+# ==== LINE OAuth====
+oauth_ns = runpy.run_path("pages/3_line_oauth.py")
+oauth_ns["handle_line_oauth"]()
+# =========================================
+
 # ====ログイン有無・ユーザー情報==== By 本間
 if "user_logged_in" not in st.session_state:
     st.session_state["user_logged_in"] = False
