@@ -104,3 +104,7 @@ st.session_state.update({
 })
 
 st.success(f"LINEログイン成功！ようこそ {st.session_state['user_name']} さん！")
+
+# app.py のルーティングに戻す
+st.session_state["route"] = "top"   # ログイン後トップへ（あなたの設計）
+st.rerun()
