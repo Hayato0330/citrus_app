@@ -28,9 +28,8 @@ if "input_submitted" not in st.session_state:
 route = st.session_state["route"]
 
 # ===== DEBUG（原因特定用：一時的）=====
-# st.write("DEBUG route:", st.session_state.get("route"))
-# st.write("DEBUG input_submitted:", st.session_state.get("input_submitted"))
-# st.write("DEBUG top_ids:", st.session_state.get("top_ids"))
+st.write("DEBUG route:", st.session_state.get("route"))
+st.write("DEBUG logged_in:", st.session_state.get("user_logged_in"))
 # =====================================
 
 # ===== top ページ =====
