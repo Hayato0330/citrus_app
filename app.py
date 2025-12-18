@@ -49,6 +49,10 @@ if route == "top":
 # ===== top_login ページ（ログイン後トップ）=====
 elif route == "top_login":
     runpy.run_path("pages/1_top_login.py")
+    if st.session_state.get("navigate_to") == "input":
+        st.session_state["route"] = "input"
+        del st.session_state["navigate_to"]
+        st.rerun()
 
 # ===== input ページ =====
 elif route == "input":
