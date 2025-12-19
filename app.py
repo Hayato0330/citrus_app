@@ -107,6 +107,10 @@ elif route == "input":
             st.session_state["route"] = "top"
             st.rerun()
 
+# ===== login ページ =====
+elif route == "login":
+    runpy.run_path("pages/3_login.py")
+
 # ===== 結果表示ページ =====
 ## ログイン有
 elif route == "result_login":
