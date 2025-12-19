@@ -46,6 +46,11 @@ if route == "top":
         del st.session_state["navigate_to"]
         st.rerun()
 
+    if st.session_state.get("navigate_to") == "login":
+        del st.session_state["navigate_to"]
+        # OAuth は app.py 冒頭で常に処理されるので rerun だけでOK
+        st.rerun()
+
 # ===== top_login ページ（ログイン後トップ）=====
 elif route == "top_login":
     runpy.run_path("pages/1_top_login.py")

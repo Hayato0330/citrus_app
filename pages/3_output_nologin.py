@@ -179,6 +179,13 @@ top_items = df_sel.head(3)
 # ===== UI（login版と完全一致）=====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
+def pick(row, *keys, default=None):
+    for k in keys:
+        v = getattr(row, k, None)
+        if v is not None and v != "":
+            return v
+    return default
+
 cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
@@ -242,8 +249,10 @@ with quadrants[3]:
 
     # ★ 「ログイン」導線（UIは崩さず、挙動だけ）
     if st.button("🔐 ログインして購入リンクを見る", use_container_width=True):
-        st.session_state["route"] = "login"
+        st.session_state["route"] = "top"
+        st.session_state["navigate_to"] = "login"
         st.rerun()
+
 
 with st.sidebar:
     if st.button("← トップへ戻る", use_container_width=True):
