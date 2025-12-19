@@ -92,21 +92,98 @@ st.markdown(
 
 # ===== 外部リンク生成 =====
 def build_amazon_url(name: str) -> str:
-    q = quote(f"{name} 生果 フルーツ -苗 -苗木 -のぼり -ジュース -ゼリー -缶 -本")
-    return f"https://www.amazon.co.jp/s?k={q}&i=grocery"
+    # 生果に寄せつつ、除外は「園芸・販促」中心に抑える
+    q = quote(f'{name} 柑橘 みかん 生果 -家庭用 -贈答 -苗 -苗木 -種 -栽培 -のぼり')
+    return f"https://www.amazon.co.jp/s?k={q}"
 
 def build_rakuten_url(name: str) -> str:
-    return f"https://search.rakuten.co.jp/search/mall/{quote(name)}/"
+    # 品種名だけだと広すぎるので、ユーザーが実際に入れがちな語を足す
+    q = quote(f"{name} 柑橘 みかん 家庭用 贈答")
+    return f"https://search.rakuten.co.jp/search/mall/{q}/"
 
 def build_satofuru_url(name: str) -> str:
-    return f"https://www.satofull.jp/search/?q={quote(name)}"
+    # さとふる側の検索URL仕様が不安定なので、site検索で確実に飛ばす
+    q = quote(f"site:satofull.jp {name} みかん 柑橘")
+    return f"https://www.google.com/search?q={q}"
 
-# ===== SNSシェア =====
+# ===== 何派 + SNSシェア =====
+def _safe_int(v, default: int = 0) -> int:
+    try:
+        return int(v)
+    except Exception:
+        return default
+
+
+def compute_taste_type() -> str:
+    """
+    入力6指標から「◯◯◯◯派」を自動生成する。
+    - 上位2特徴を連結（例：さっぱり香り派）
+    - 同点が多いときのブレを防ぐために優先順位でタイブレーク
+    """
+    vals = {
+        "sweet": _safe_int(st.session_state.get("val_brix")),
+        "sour": _safe_int(st.session_state.get("val_acid")),
+        "bitter": _safe_int(st.session_state.get("val_bitterness")),
+        "aroma": _safe_int(st.session_state.get("val_aroma")),
+        "juicy": _safe_int(st.session_state.get("val_moisture")),
+        "texture": _safe_int(st.session_state.get("val_texture")),
+    }
+
+    labels = {
+        "sweet": "甘党",
+        "sour": "さっぱり",
+        "bitter": "大人味",
+        "aroma": "香り",
+        "juicy": "ジューシー",
+        "texture": "ぷりぷり",
+    }
+
+    # 同点時の優先順位（好みで調整OK）
+    # 「香り・酸味・甘さ」あたりが“診断っぽさ”が出やすい
+    priority = ["aroma", "sour", "sweet", "juicy", "texture", "bitter"]
+    pr = {k: i for i, k in enumerate(priority)}
+
+    # (値が高いほど上) → (同点なら優先順位が高いほど上)
+    ranked_keys = sorted(
+        vals.keys(),
+        key=lambda k: (-vals[k], pr.get(k, 999))
+    )
+
+    top1 = ranked_keys[0]
+    top2 = ranked_keys[1] if len(ranked_keys) > 1 else top1
+
+    a = labels.get(top1, "好み")
+    b = labels.get(top2, "")
+
+    # 2位が同じ特徴になってしまったら1語にする
+    if top1 == top2 or b == "":
+        return f"{a}派"
+
+    return f"{a}{b}派"
+
+
 def build_twitter_share(names: list[str]) -> str:
-    ranked_text = "\n".join([f"{i+1}位 {n}" for i, n in enumerate(names)])
+
     app_url = "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
-    text = quote(f"おすすめの柑橘 🍊\n{ranked_text}\n#柑橘おすすめ\n{app_url}")
-    return f"https://twitter.com/intent/tweet?text={text}"
+    taste_type = compute_taste_type()
+
+    n1 = names[0] if len(names) > 0 and names[0] else "—"
+    n2 = names[1] if len(names) > 1 and names[1] else "—"
+    n3 = names[2] if len(names) > 2 and names[2] else "—"
+
+    text_raw = (
+        "🍊柑橘おすすめ診断の結果！\n\n"
+        f"【私は “{taste_type}” でした🍋】\n"
+        "あなたは何派？\n\n"
+        f"🏆 1位：{n1}\n"
+        f"🥈 2位：{n2}\n"
+        f"🥉 3位：{n3}\n\n"
+        "あなたのタイプも出るよ👇\n"
+        "#柑橘おすすめ\n"
+        f"{app_url}"
+    )
+
+    return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
 # ===== データ取得（nologin と同じ思想）=====
 TOPK = 3
@@ -178,7 +255,7 @@ df_sel = df_sel.sort_values("__order")
 top_items = df_sel.head(TOPK)
 
 # ===== UI =====
-st.markdown("### 🍊 柑橘おすすめ診断 - 結果（ログイン）")
+st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
 cols_top = st.columns(2)
 cols_bottom = st.columns(2)
@@ -208,18 +285,18 @@ def render_card(i, row):
           <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
         <div style="flex:1;text-align:center;">
-          <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon">
-            Amazonで見る
-          </a><br>
-          <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
-            楽天で見る
-          </a><br>
-          <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">
-            <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
-            さとふるで見る
-          </a>
+            <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon">
+                Amazonで生果を探す
+            </a><br>
+            <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
+                楽天で贈答/家庭用を探す
+            </a><br>
+            <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">
+                <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
+                ふるさと納税で探す
+            </a>
         </div>
       </div>
     </div>
@@ -233,6 +310,7 @@ for i, row in enumerate(top_items.itertuples(), start=1):
 with quadrants[3]:
     names = [pick(r, "name", "Item_name", default="不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
+
     st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
@@ -243,7 +321,13 @@ with quadrants[3]:
     </div>
     """, unsafe_allow_html=True)
 
-st.caption("※ マッチ度は嗜好との近さを % 表記です。")
+    # まとめカードの下に“もう一回診断”を追加（ログイン版はこれだけ）
+    if st.button("🔁 もう一回診断する（入力を変える）", use_container_width=True):
+        # 念のため古い結果をクリア
+        st.session_state["top_ids"] = None
+        st.session_state["route"] = "input"
+        st.rerun()
+
 
 with st.sidebar:
     if st.button("← トップへ戻る", use_container_width=True):
