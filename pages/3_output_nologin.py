@@ -11,6 +11,21 @@ import runpy
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
+# ===== ユーティリティ =====
+def pick(row, *keys, default=None):
+    for k in keys:
+        v = getattr(row, k, None)
+        if v not in (None, ""):
+            return v
+    return default
+
+def _safe_int(v, default=0):
+    try:
+        return int(v)
+    except Exception:
+        return default
+
+# ===== 背景画像 =====
 @st.cache_data
 def local_image_to_data_url(path: str) -> str:
     p = Path(path)
@@ -70,7 +85,6 @@ body { background-color: #FFF8F0; }
 .satofuru-btn:hover { background-color:#b85c19; }
 .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
 
-/* ★ nologin専用：見た目そのまま無効化 */
 .disabled-btn {
   opacity: 0.6;
   cursor: not-allowed;
@@ -89,7 +103,9 @@ st.markdown(
         background-repeat: no-repeat;
         background-attachment: fixed;
     }}
-    [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
+    [data-testid="stHeader"], 
+    [data-testid="stToolbar"], 
+    [data-testid="stSidebar"] {{
         background: transparent !important;
     }}
     </style>
@@ -97,29 +113,76 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ===== データ取得（login版と同一）=====
-TOPK = 3
-
+# ===== top_ids =====
 top_ids = st.session_state.get("top_ids")
 if not top_ids:
     st.session_state["route"] = "top"
     st.rerun()
 
-ns = runpy.run_path("pages/2_calculation_logic.py")
-df_all = ns["_prepare_dataframe"]()
+TOPK = 3
 
-df_sel = df_all[df_all["id"].isin(top_ids)].copy()
+# ===== ユーザー入力ベクトル =====
+user_vec = np.array([
+    _safe_int(st.session_state.get("val_brix")),
+    _safe_int(st.session_state.get("val_acid")),
+    _safe_int(st.session_state.get("val_bitterness")),
+    _safe_int(st.session_state.get("val_aroma")),
+    _safe_int(st.session_state.get("val_moisture")),
+    _safe_int(st.session_state.get("val_texture")),
+], dtype=float)
+
+# ===== 2_calculation_logic =====
+ns = runpy.run_path("pages/2_calculation_logic.py")
+prepare_df = ns.get("_prepare_dataframe")
+score_items = ns.get("score_items")
+
+if prepare_df is None:
+    st.error("2_calculation_logic.py に _prepare_dataframe が見つかりません。")
+    st.stop()
+
+df_all = prepare_df()
+
+# ===== score 計算（nologinでも必ず出す）=====
+if score_items is None:
+    feature_cols = ["brix", "acid", "bitter", "smell", "moisture", "elastic"]
+
+    def normalize(v): return v / (np.linalg.norm(v) + 1e-8)
+
+    X = df_all[feature_cols].astype(float).values
+    u = normalize(user_vec)
+    Xn = np.array([normalize(x) for x in X])
+
+    ranked_all = df_all.copy()
+    ranked_all["score"] = Xn @ u
+else:
+    try:
+        ranked_all = score_items(df_all, user_vec, season_pref="", weights=None)
+    except TypeError:
+        ranked_all = score_items(df_all, user_vec, season_pref="")
+
+# ===== Excel（説明と画像）=====
+@st.cache_data
+def load_details():
+    path = Path(__file__).resolve().parent.parent / "citrus_details_list.xlsx"
+    return pd.read_excel(path, sheet_name="説明と画像")
+
+details_df = load_details()
+
+# ===== top_ids順に抽出 → Excel merge =====
+df_sel = ranked_all[ranked_all["id"].isin(top_ids)].copy()
 df_sel["__order"] = pd.Categorical(df_sel["id"], categories=top_ids, ordered=True)
 df_sel = df_sel.sort_values("__order")
+
+df_sel = df_sel.merge(
+    details_df,
+    left_on="id",
+    right_on="Item_ID",
+    how="left"
+)
+
 top_items = df_sel.head(TOPK)
 
-# ===== 何派 + SNSシェア用ロジック =====
-def _safe_int(v, d=0):
-    try:
-        return int(v)
-    except Exception:
-        return d
-
+# ===== 何派 + Xシェア =====
 def compute_taste_type() -> str:
     vals = {
         "sweet": _safe_int(st.session_state.get("val_brix")),
@@ -130,129 +193,92 @@ def compute_taste_type() -> str:
         "texture": _safe_int(st.session_state.get("val_texture")),
     }
     labels = {
-        "sweet": "甘党",
-        "sour": "さっぱり",
-        "bitter": "大人味",
-        "aroma": "香り",
-        "juicy": "ジューシー",
-        "texture": "ぷりぷり",
+        "sweet":"甘党","sour":"さっぱり","bitter":"大人味",
+        "aroma":"香り","juicy":"ジューシー","texture":"ぷりぷり"
     }
-    priority = ["aroma", "sour", "sweet", "juicy", "texture", "bitter"]
+    priority = ["aroma","sour","sweet","juicy","texture","bitter"]
     ranked = sorted(vals.keys(), key=lambda k: (-vals[k], priority.index(k)))
     a, b = labels[ranked[0]], labels[ranked[1]]
     return f"{a}{b}派" if a != b else f"{a}派"
 
 def build_twitter_share(names):
     taste = compute_taste_type()
-    n1 = names[0] if len(names) > 0 else "—"
-    n2 = names[1] if len(names) > 1 else "—"
-    n3 = names[2] if len(names) > 2 else "—"
-
+    n = names + ["—","—","—"]
     text = (
         "🍊柑橘おすすめ診断の結果！\n\n"
         f"【私は “{taste}” でした🍋】\n\n"
-        f"🏆 1位：{n1}\n"
-        f"🥈 2位：{n2}\n"
-        f"🥉 3位：{n3}\n\n"
+        f"🏆 1位：{n[0]}\n"
+        f"🥈 2位：{n[1]}\n"
+        f"🥉 3位：{n[2]}\n\n"
         "あなたのタイプも出るよ👇\n"
         "#柑橘おすすめ\n"
         "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
     )
     return f"https://twitter.com/intent/tweet?text={quote(text)}"
 
-# ===== データ =====
-top_ids = st.session_state.get("top_ids")
-if not top_ids:
-    st.session_state["route"] = "top"
-    st.rerun()
-
-ns = runpy.run_path("pages/2_calculation_logic.py")
-df = ns["_prepare_dataframe"]()
-
-df_sel = df[df["id"].isin(top_ids)].copy()
-df_sel["__o"] = pd.Categorical(df_sel["id"], categories=top_ids, ordered=True)
-df_sel = df_sel.sort_values("__o")
-
-top_items = df_sel.head(3)
-
-
-# ===== UI（login版と完全一致）=====
+# ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
-
-def pick(row, *keys, default=None):
-    for k in keys:
-        v = getattr(row, k, None)
-        if v is not None and v != "":
-            return v
-    return default
 
 cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
 def render_card(i, row):
-    name = getattr(row, "name", "不明")
-    desc = getattr(row, "description", "")
-    image_url = getattr(row, "image_path", "https://via.placeholder.com/200x150?text=No+Image")
-    score_pct = float(getattr(row, "score", 0.0)) * 100
+    name = pick(row,"Item_name","name","不明")
+    desc = pick(row,"Description","description","")
+    img = pick(row,"Image_key","image_path","")
 
-    html = f"""
+    if img:
+        p = img.replace("..","").lstrip("/")
+        img_path = Path(__file__).resolve().parent.parent / p
+        image_url = str(img_path) if img_path.exists() else "https://via.placeholder.com/200x150"
+    else:
+        image_url = "https://via.placeholder.com/200x150"
+
+    score = float(pick(row,"score",0))*100
+
+    st.markdown(f"""
     <div class="card">
       <h2>{i}. {name}</h2>
-      <div style="display:flex;gap:20px;align-items:flex-start;">
+      <div style="display:flex;gap:20px;">
         <div style="flex:1;">
-          <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-          <p>マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
-          <p style="font-size:14px;color:#333;">{desc}</p>
+          <img src="{image_url}" style="max-width:100%;border-radius:8px;">
+          <p>マッチ度: <span class="match-score">{score:.1f}%</span></p>
+          <p>{desc}</p>
         </div>
         <div style="flex:1;text-align:center;">
-            <!-- ★ 見た目そのまま・クリック不可 -->
-            <div class="link-btn amazon-btn disabled-btn">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg">
-                Amazonで生果を探す
-            </div><br>
-            <div class="link-btn rakuten-btn disabled-btn">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg">
-                楽天で贈答/家庭用を探す
-            </div><br>
-            <div class="link-btn satofuru-btn disabled-btn">
-                <img src="https://www.satofull.jp/favicon.ico">
-                ふるさと納税で探す
-            </div>
-            <p style="font-size:13px;color:#666;margin-top:10px;">
-              ※ <b>ログイン</b>すると購入リンクや履歴保存が使えます
-            </p>
+          <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
+          <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
+          <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
+          <p style="font-size:13px;color:#666;margin-top:10px;">
+            ※ <b>ログイン</b>すると購入リンクや履歴保存が使えます
+          </p>
         </div>
       </div>
     </div>
-    """
-    st.markdown(html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-for i, row in enumerate(top_items.itertuples(), start=1):
-    with quadrants[i - 1]:
-        render_card(i, row)
+for i,r in enumerate(top_items.itertuples(),1):
+    with quadrants[i-1]:
+        render_card(i,r)
 
-# ===== まとめカード（login版と同一配置）=====
 with quadrants[3]:
-    names = [pick(r, "name", "Item_name", default="不明") for r in top_items.itertuples()]
+    names = [pick(r,"Item_name","name","不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
 
     st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://cdn.cms-twdigitalassets.com/content/dam/about-twitter/x/brand-toolkit/logo-black.png.twimg.2560.png" alt="X">
         Xでシェア
       </a>
     </div>
     """, unsafe_allow_html=True)
 
-    # ★ 「ログイン」導線（UIは崩さず、挙動だけ）
     if st.button("🔐 ログインして購入リンクを見る", use_container_width=True):
         st.session_state["route"] = "top"
         st.session_state["navigate_to"] = "login"
         st.rerun()
-
 
 with st.sidebar:
     if st.button("← トップへ戻る", use_container_width=True):

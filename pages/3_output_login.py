@@ -11,6 +11,21 @@ import runpy
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
+# ===== ユーティリティ =====
+def pick(row, *keys, default=None):
+    for k in keys:
+        v = getattr(row, k, None)
+        if v not in (None, ""):
+            return v
+    return default
+
+def _safe_int(v, default=0):
+    try:
+        return int(v)
+    except Exception:
+        return default
+
+# ===== 背景画像 =====
 @st.cache_data
 def local_image_to_data_url(path: str) -> str:
     p = Path(path)
@@ -24,7 +39,7 @@ def local_image_to_data_url(path: str) -> str:
 IMG_PATH = Path(__file__).resolve().parent.parent / "other_images/top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
-# ===== CSS =====
+# ===== CSS（login版そのまま）=====
 st.markdown(textwrap.dedent("""
 <style>
 body { background-color: #FFF8F0; }
@@ -92,34 +107,19 @@ st.markdown(
 
 # ===== 外部リンク生成 =====
 def build_amazon_url(name: str) -> str:
-    # 生果に寄せつつ、除外は「園芸・販促」中心に抑える
     q = quote(f'{name} 柑橘 みかん 生果 -家庭用 -贈答 -苗 -苗木 -種 -栽培 -のぼり')
     return f"https://www.amazon.co.jp/s?k={q}"
 
 def build_rakuten_url(name: str) -> str:
-    # 品種名だけだと広すぎるので、ユーザーが実際に入れがちな語を足す
     q = quote(f"{name} 柑橘 みかん 家庭用 贈答")
     return f"https://search.rakuten.co.jp/search/mall/{q}/"
 
 def build_satofuru_url(name: str) -> str:
-    # さとふる側の検索URL仕様が不安定なので、site検索で確実に飛ばす
     q = quote(f"site:satofull.jp {name} みかん 柑橘")
     return f"https://www.google.com/search?q={q}"
 
 # ===== 何派 + SNSシェア =====
-def _safe_int(v, default: int = 0) -> int:
-    try:
-        return int(v)
-    except Exception:
-        return default
-
-
 def compute_taste_type() -> str:
-    """
-    入力6指標から「◯◯◯◯派」を自動生成する。
-    - 上位2特徴を連結（例：さっぱり香り派）
-    - 同点が多いときのブレを防ぐために優先順位でタイブレーク
-    """
     vals = {
         "sweet": _safe_int(st.session_state.get("val_brix")),
         "sour": _safe_int(st.session_state.get("val_acid")),
@@ -128,66 +128,47 @@ def compute_taste_type() -> str:
         "juicy": _safe_int(st.session_state.get("val_moisture")),
         "texture": _safe_int(st.session_state.get("val_texture")),
     }
-
     labels = {
-        "sweet": "甘党",
-        "sour": "さっぱり",
-        "bitter": "大人味",
-        "aroma": "香り",
-        "juicy": "ジューシー",
-        "texture": "ぷりぷり",
+        "sweet":"甘党","sour":"さっぱり","bitter":"大人味",
+        "aroma":"香り","juicy":"ジューシー","texture":"ぷりぷり"
     }
-
-    # 同点時の優先順位（好みで調整OK）
-    # 「香り・酸味・甘さ」あたりが“診断っぽさ”が出やすい
-    priority = ["aroma", "sour", "sweet", "juicy", "texture", "bitter"]
-    pr = {k: i for i, k in enumerate(priority)}
-
-    # (値が高いほど上) → (同点なら優先順位が高いほど上)
-    ranked_keys = sorted(
-        vals.keys(),
-        key=lambda k: (-vals[k], pr.get(k, 999))
-    )
-
-    top1 = ranked_keys[0]
-    top2 = ranked_keys[1] if len(ranked_keys) > 1 else top1
-
-    a = labels.get(top1, "好み")
-    b = labels.get(top2, "")
-
-    # 2位が同じ特徴になってしまったら1語にする
-    if top1 == top2 or b == "":
-        return f"{a}派"
-
-    return f"{a}{b}派"
-
+    priority = ["aroma","sour","sweet","juicy","texture","bitter"]
+    ranked = sorted(vals.keys(), key=lambda k: (-vals[k], priority.index(k)))
+    a, b = labels[ranked[0]], labels[ranked[1]]
+    return f"{a}{b}派" if a != b else f"{a}派"
 
 def build_twitter_share(names: list[str]) -> str:
-
     app_url = "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
     taste_type = compute_taste_type()
 
-    n1 = names[0] if len(names) > 0 and names[0] else "—"
-    n2 = names[1] if len(names) > 1 and names[1] else "—"
-    n3 = names[2] if len(names) > 2 and names[2] else "—"
-
+    n = names + ["—", "—", "—"]
     text_raw = (
         "🍊柑橘おすすめ診断の結果！\n\n"
         f"【私は “{taste_type}” でした🍋】\n"
         "あなたは何派？\n\n"
-        f"🏆 1位：{n1}\n"
-        f"🥈 2位：{n2}\n"
-        f"🥉 3位：{n3}\n\n"
+        f"🏆 1位：{n[0]}\n"
+        f"🥈 2位：{n[1]}\n"
+        f"🥉 3位：{n[2]}\n\n"
         "あなたのタイプも出るよ👇\n"
         "#柑橘おすすめ\n"
         f"{app_url}"
     )
-
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
-# ===== データ取得（nologin と同じ思想）=====
-TOPK = 3
+# ===== Excel（説明と画像）=====
+@st.cache_data
+def load_details_df() -> pd.DataFrame:
+    path = Path(__file__).resolve().parent.parent / "citrus_details_list.xlsx"
+    df = pd.read_excel(path, sheet_name="説明と画像")
+    # 期待列の正規化（念のため）
+    if "Item_ID" in df.columns:
+        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
+    return df
 
+details_df = load_details_df()
+
+# ===== データ取得 =====
+TOPK = 3
 top_ids = st.session_state.get("top_ids")
 if not top_ids:
     st.error("診断結果が見つからないため，トップページからやり直してほしい．")
@@ -197,26 +178,18 @@ if not top_ids:
             st.rerun()
     st.stop()
 
-# 入力値（app.py が session_state に入れてる前提）
-try:
-    user_vec = np.array(
-        [
-            int(st.session_state["val_brix"]),
-            int(st.session_state["val_acid"]),
-            int(st.session_state["val_bitterness"]),
-            int(st.session_state["val_aroma"]),
-            int(st.session_state["val_moisture"]),
-            int(st.session_state["val_texture"]),
-        ],
-        dtype=float,
-    )
-except Exception as e:
-    st.error(f"入力値が見つからない／取得できませんでした（詳細: {e}）")
-    st.stop()
+# 入力ベクトル
+user_vec = np.array([
+    _safe_int(st.session_state.get("val_brix")),
+    _safe_int(st.session_state.get("val_acid")),
+    _safe_int(st.session_state.get("val_bitterness")),
+    _safe_int(st.session_state.get("val_aroma")),
+    _safe_int(st.session_state.get("val_moisture")),
+    _safe_int(st.session_state.get("val_texture")),
+], dtype=float)
 
-# 2_calculation_logic から DF 作成＆スコアリングを取得
+# 2_calculation_logic を読む
 ns = runpy.run_path("pages/2_calculation_logic.py")
-
 prepare_df = ns.get("_prepare_dataframe")
 score_items = ns.get("score_items")
 
@@ -226,11 +199,12 @@ if prepare_df is None:
 
 df_all = prepare_df()
 
-# score_items が無い場合は最低限のコサイン類似で計算（落ちない保険）
+# スコア付与（loginは必ず score を持つ df を使う）
 if score_items is None:
+    # 保険：コサイン類似
     feature_cols = ["brix", "acid", "bitter", "smell", "moisture", "elastic"]
     if not all(c in df_all.columns for c in feature_cols):
-        st.error("特徴量カラムが不足しています（brix/acid/bitter/smell/moisture/elastic）。")
+        st.error("特徴量カラム不足（brix/acid/bitter/smell/moisture/elastic）。")
         st.stop()
     X = df_all[feature_cols].astype(float).values
 
@@ -238,19 +212,22 @@ if score_items is None:
     u = normalize(user_vec)
     Xn = np.array([normalize(x) for x in X])
     scores = Xn @ u
+
     ranked_all = df_all.copy()
     ranked_all["score"] = scores
 else:
-    # 2_calculation_logic 側の定義に合わせて呼ぶ（weights は無ければ渡さない）
     try:
         ranked_all = score_items(df_all, user_vec, season_pref="", weights=None)
     except TypeError:
         ranked_all = score_items(df_all, user_vec, season_pref="")
 
-# top_ids の順序を保持して抽出（表示順位は top_ids を優先）
+# top_ids順で抽出
 df_sel = ranked_all[ranked_all["id"].isin(top_ids)].copy()
 df_sel["__order"] = pd.Categorical(df_sel["id"], categories=top_ids, ordered=True)
-df_sel = df_sel.sort_values("__order")
+df_sel = df_sel.sort_values("__order").reset_index(drop=True)
+
+# Excelの説明と画像を結合（scoreを消さない！）
+df_sel = df_sel.merge(details_df, left_on="id", right_on="Item_ID", how="left")
 
 top_items = df_sel.head(TOPK)
 
@@ -261,18 +238,19 @@ cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
-def pick(row, *keys, default=None):
-    for k in keys:
-        v = getattr(row, k, None)
-        if v is not None and v != "":
-            return v
-    return default
-
 def render_card(i, row):
-    # 列名が name / Item_name どちらでも動くように
-    name = pick(row, "name", "Item_name", default="不明")
-    desc = pick(row, "description", default="")
-    image_url = pick(row, "image_path", default="https://via.placeholder.com/200x150?text=No+Image")
+    name = pick(row, "Item_name", "name", default="不明")
+    desc = pick(row, "Description", "description", default="")
+    img = pick(row, "Image_key", "image_path", default="")
+
+    # 画像パスが ../citrus_images/... なら、プロジェクト直下基準に直す
+    if isinstance(img, str) and img.strip():
+        p = img.replace("..", "").lstrip("/")
+        img_path = str(Path(__file__).resolve().parent.parent / p)
+        image_url = img_path if Path(img_path).exists() else "https://via.placeholder.com/200x150?text=No+Image"
+    else:
+        image_url = "https://via.placeholder.com/200x150?text=No+Image"
+
     score_pct = float(pick(row, "score", default=0.0)) * 100
 
     html = f"""
@@ -286,15 +264,12 @@ def render_card(i, row):
         </div>
         <div style="flex:1;text-align:center;">
             <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon">
                 Amazonで生果を探す
             </a><br>
             <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Rakuten_Global_Brand_Logo.svg" alt="Rakuten">
                 楽天で贈答/家庭用を探す
             </a><br>
             <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">
-                <img src="https://www.satofull.jp/favicon.ico" alt="さとふる">
                 ふるさと納税で探す
             </a>
         </div>
@@ -308,26 +283,22 @@ for i, row in enumerate(top_items.itertuples(), start=1):
         render_card(i, row)
 
 with quadrants[3]:
-    names = [pick(r, "name", "Item_name", default="不明") for r in top_items.itertuples()]
+    names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
 
     st.markdown(f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        <img src="https://cdn.cms-twdigitalassets.com/content/dam/about-twitter/x/brand-toolkit/logo-black.png.twimg.2560.png" alt="X">
         Xでシェア
       </a>
     </div>
     """, unsafe_allow_html=True)
 
-    # まとめカードの下に“もう一回診断”を追加（ログイン版はこれだけ）
     if st.button("🔁 もう一回診断する（入力を変える）", use_container_width=True):
-        # 念のため古い結果をクリア
         st.session_state["top_ids"] = None
         st.session_state["route"] = "input"
         st.rerun()
-
 
 with st.sidebar:
     if st.button("← トップへ戻る", use_container_width=True):
