@@ -39,6 +39,36 @@ def local_image_to_data_url(path: str) -> str:
 IMG_PATH = Path(__file__).resolve().parent.parent / "other_images/top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
+@st.cache_data
+def image_file_to_data_url(path: str) -> str:
+    p = Path(path)
+    if not p.exists():
+        return ""
+    ext = p.suffix.lower()
+    mime = "image/jpeg" if ext in [".jpg", ".jpeg"] else "image/png"
+    b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
+def build_citrus_image_url_from_id(item_id) -> str:
+    # app直下/citrus_images/citrus_{ID}.JPG を探す
+    root = Path(__file__).resolve().parent.parent
+    try:
+        iid = int(item_id)
+    except Exception:
+        return ""
+
+    candidates = [
+        root / "citrus_images" / f"citrus_{iid}.JPG",
+        root / "citrus_images" / f"citrus_{iid}.jpg",
+        root / "citrus_images" / f"citrus_{iid}.JPEG",
+        root / "citrus_images" / f"citrus_{iid}.jpeg",
+        root / "citrus_images" / f"citrus_{iid}.png",
+    ]
+    for p in candidates:
+        if p.exists():
+            return image_file_to_data_url(str(p))
+    return ""
+
 # ===== CSS（login版そのまま）=====
 st.markdown(textwrap.dedent("""
 <style>
@@ -241,15 +271,10 @@ quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
     desc = pick(row, "Description", "description", default="")
-    img = pick(row, "Image_key", "image_path", default="")
+    #Item_ID（= id）から citrus_images/citrus_{ID}.JPG を組み立てて表示
+    item_id = pick(row, "id", "Item_ID", default=None)
+    image_url = build_citrus_image_url_from_id(item_id) or "https://via.placeholder.com/200x150?text=No+Image"
 
-    # 画像パスが ../citrus_images/... なら、プロジェクト直下基準に直す
-    if isinstance(img, str) and img.strip():
-        p = img.replace("..", "").lstrip("/")
-        img_path = str(Path(__file__).resolve().parent.parent / p)
-        image_url = img_path if Path(img_path).exists() else "https://via.placeholder.com/200x150?text=No+Image"
-    else:
-        image_url = "https://via.placeholder.com/200x150?text=No+Image"
 
     score_pct = float(pick(row, "score", default=0.0)) * 100
 

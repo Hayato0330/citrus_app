@@ -39,6 +39,34 @@ def local_image_to_data_url(path: str) -> str:
 IMG_PATH = Path(__file__).resolve().parent.parent / "other_images/top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
 
+@st.cache_data
+def image_file_to_data_url(path: str) -> str:
+    p = Path(path)
+    if not p.exists():
+        return ""
+    ext = p.suffix.lower()
+    mime = "image/jpeg" if ext in [".jpg", ".jpeg"] else "image/png"
+    b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+
+def build_citrus_image_url_from_id(item_id) -> str:
+    root = Path(__file__).resolve().parent.parent
+    try:
+        iid = int(item_id)
+    except Exception:
+        return ""
+    candidates = [
+        root / "citrus_images" / f"citrus_{iid}.JPG",
+        root / "citrus_images" / f"citrus_{iid}.jpg",
+        root / "citrus_images" / f"citrus_{iid}.JPEG",
+        root / "citrus_images" / f"citrus_{iid}.jpeg",
+        root / "citrus_images" / f"citrus_{iid}.png",
+    ]
+    for p in candidates:
+        if p.exists():
+            return image_file_to_data_url(str(p))
+    return ""
+
 # ===== CSS（login版と完全一致）=====
 st.markdown(textwrap.dedent("""
 <style>
@@ -226,14 +254,9 @@ quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 def render_card(i, row):
     name = pick(row,"Item_name","name","不明")
     desc = pick(row,"Description","description","")
-    img = pick(row,"Image_key","image_path","")
+    item_id = pick(row, "id", "Item_ID", default=None)
+    image_url = build_citrus_image_url_from_id(item_id) or "https://via.placeholder.com/200x150?text=No+Image"
 
-    if img:
-        p = img.replace("..","").lstrip("/")
-        img_path = Path(__file__).resolve().parent.parent / p
-        image_url = str(img_path) if img_path.exists() else "https://via.placeholder.com/200x150"
-    else:
-        image_url = "https://via.placeholder.com/200x150"
 
     score = float(pick(row,"score",0))*100
 
