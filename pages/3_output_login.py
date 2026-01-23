@@ -1,12 +1,10 @@
 # pages/3_output_login.py
 import streamlit as st
-import numpy as np
 import pandas as pd
 from urllib.parse import quote
 import textwrap
 import base64
 from pathlib import Path
-import runpy
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -208,56 +206,19 @@ if not top_ids:
             st.rerun()
     st.stop()
 
-# 入力ベクトル
-user_vec = np.array([
-    _safe_int(st.session_state.get("val_brix")),
-    _safe_int(st.session_state.get("val_acid")),
-    _safe_int(st.session_state.get("val_bitterness")),
-    _safe_int(st.session_state.get("val_aroma")),
-    _safe_int(st.session_state.get("val_moisture")),
-    _safe_int(st.session_state.get("val_texture")),
-], dtype=float)
-
-# 2_calculation_logic を読む
-ns = runpy.run_path("pages/2_calculation_logic.py")
-prepare_df = ns.get("_prepare_dataframe")
-score_items = ns.get("score_items")
-
-if prepare_df is None:
-    st.error("2_calculation_logic.py に _prepare_dataframe が見つかりません。")
-    st.stop()
-
-df_all = prepare_df()
-
-# スコア付与（loginは必ず score を持つ df を使う）
-if score_items is None:
-    # 保険：コサイン類似
-    feature_cols = ["brix", "acid", "bitter", "smell", "moisture", "elastic"]
-    if not all(c in df_all.columns for c in feature_cols):
-        st.error("特徴量カラム不足（brix/acid/bitter/smell/moisture/elastic）。")
-        st.stop()
-    X = df_all[feature_cols].astype(float).values
-
-    def normalize(v): return v / (np.linalg.norm(v) + 1e-8)
-    u = normalize(user_vec)
-    Xn = np.array([normalize(x) for x in X])
-    scores = Xn @ u
-
-    ranked_all = df_all.copy()
-    ranked_all["score"] = scores
-else:
-    try:
-        ranked_all = score_items(df_all, user_vec, season_pref="", weights=None)
-    except TypeError:
-        ranked_all = score_items(df_all, user_vec, season_pref="")
-
-# top_ids順で抽出
-df_sel = ranked_all[ranked_all["id"].isin(top_ids)].copy()
-df_sel["__order"] = pd.Categorical(df_sel["id"], categories=top_ids, ordered=True)
-df_sel = df_sel.sort_values("__order").reset_index(drop=True)
 
 # Excelの説明と画像を結合（scoreを消さない！）
-df_sel = df_sel.merge(details_df, left_on="id", right_on="Item_ID", how="left")
+top_ids_int = []
+for x in top_ids:
+    try:
+        top_ids_int.append(int(x))
+    except Exception:
+        pass
+
+# details_df から top_ids の行だけ抜き出し、top_ids の順に並べる
+df_sel = details_df[details_df["Item_ID"].isin(top_ids_int)].copy()
+df_sel["__order"] = pd.Categorical(df_sel["Item_ID"], categories=top_ids_int, ordered=True)
+df_sel = df_sel.sort_values("__order").reset_index(drop=True)
 
 top_items = df_sel.head(TOPK)
 
@@ -271,12 +232,9 @@ quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
     desc = pick(row, "Description", "description", default="")
-    #Item_ID（= id）から citrus_images/citrus_{ID}.JPG を組み立てて表示
-    item_id = pick(row, "id", "Item_ID", default=None)
+    item_id = pick(row, "Item_ID", default=None)
     image_url = build_citrus_image_url_from_id(item_id) or "https://via.placeholder.com/200x150?text=No+Image"
 
-
-    score_pct = float(pick(row, "score", default=0.0)) * 100
 
     html = f"""
     <div class="card">
@@ -284,7 +242,6 @@ def render_card(i, row):
       <div style="display:flex;gap:20px;align-items:flex-start;">
         <div style="flex:1;">
           <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-          <p>マッチ度: <span class="match-score">{score_pct:.1f}%</span></p>
           <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
         <div style="flex:1;text-align:center;">
