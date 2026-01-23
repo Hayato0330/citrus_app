@@ -67,6 +67,11 @@ def build_citrus_image_url_from_id(item_id) -> str:
             return image_file_to_data_url(str(p))
     return ""
 
+# ===== no-image（デフォルト画像）=====
+NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.png"
+NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
+
+
 # ===== CSS（login版そのまま）=====
 st.markdown(textwrap.dedent("""
 <style>
@@ -233,8 +238,10 @@ def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
     desc = pick(row, "Description", "description", default="")
     item_id = pick(row, "Item_ID", default=None)
-    image_url = build_citrus_image_url_from_id(item_id) or "https://via.placeholder.com/200x150?text=No+Image"
-
+    image_url = NO_IMAGE_URL  # デフォルトは必ず no-image
+    real_url = build_citrus_image_url_from_id(item_id)
+    if real_url:
+        image_url = real_url
 
     html = f"""
     <div class="card">
