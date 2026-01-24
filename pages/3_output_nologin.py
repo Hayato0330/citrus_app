@@ -236,8 +236,11 @@ def render_card(i, row):
           <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
           <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
           <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
-          <p style="font-size:13px;color:#666;margin-top:10px;">
-            ※ <b>ログイン</b>すると購入リンクや履歴保存が使えます
+          <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+          <b>ログインするとできること</b><br>
+          ・気になった柑橘を <b>購入ページまで進める</b><br>
+          ・診断結果を <b>保存してあとから見返せる</b><br>
+          ・入力を変えて <b>何度でも試せる</b>
           </p>
         </div>
       </div>
