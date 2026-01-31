@@ -264,12 +264,11 @@ with quadrants[3]:
     </div>
     """, unsafe_allow_html=True)
 
-    col_a, col_b = st.columns(1, gap="small")
+    col_a = st.columns(1, gap="small")
 
     with col_a:
         if st.button("ログインして購入リンクを見る", use_container_width=True):
             st.session_state["route"] = "login"
             st.session_state.pop("navigate_to", None)
             st.rerun()
-
 
