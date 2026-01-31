@@ -291,6 +291,5 @@ with quadrants[3]:
         st.rerun()
 
     if st.button("← トップへ戻る", use_container_width=True):
-        st.session_state["route"] = "top_login"
-        st.rerun()
-
+            st.session_state["route"] = "top"
+            st.rerun()
