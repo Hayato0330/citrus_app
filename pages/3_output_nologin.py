@@ -264,7 +264,7 @@ with quadrants[3]:
     </div>
     """, unsafe_allow_html=True)
 
-    col_a, col_b = st.columns(2, gap="small")
+    col_a, col_b = st.columns(1, gap="small")
 
     with col_a:
         if st.button("ログインして購入リンクを見る", use_container_width=True):
@@ -272,8 +272,4 @@ with quadrants[3]:
             st.session_state.pop("navigate_to", None)
             st.rerun()
 
-    with col_b:
-        if st.button("← トップへ戻る", use_container_width=True):
-            st.session_state["route"] = "top"
-            st.rerun()
 
