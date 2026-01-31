@@ -251,7 +251,7 @@ for i,r in enumerate(top_items.itertuples(),1):
         render_card(i,r)
 
 with quadrants[3]:
-    names = [pick(r,"Item_name","name","不明") for r in top_items.itertuples()]
+    names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
 
     st.markdown(f"""
@@ -260,15 +260,20 @@ with quadrants[3]:
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
         Xでシェア
       </a>
+      <div style="margin-top:14px;"></div>
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("🔐 ログインして購入リンクを見る", use_container_width=True):
-        st.session_state["route"] = "top"
-        st.session_state["navigate_to"] = "login"
-        st.rerun()
+    col_a, col_b = st.columns(2, gap="small")
 
-with st.sidebar:
-    if st.button("← トップへ戻る", use_container_width=True):
-        st.session_state["route"] = "top"
-        st.rerun()
+    with col_a:
+        if st.button("ログインして購入リンクを見る", use_container_width=True):
+            st.session_state["route"] = "login"
+            st.session_state.pop("navigate_to", None)
+            st.rerun()
+
+    with col_b:
+        if st.button("← トップへ戻る", use_container_width=True):
+            st.session_state["route"] = "top"
+            st.rerun()
+

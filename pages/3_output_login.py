@@ -281,6 +281,7 @@ with quadrants[3]:
       <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
         Xでシェア
       </a>
+      <div style="margin-top:14px;"></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -289,7 +290,7 @@ with quadrants[3]:
         st.session_state["route"] = "input"
         st.rerun()
 
-with st.sidebar:
     if st.button("← トップへ戻る", use_container_width=True):
-        st.session_state["route"] = "top_login" if st.session_state.get("user_logged_in") else "top"
+        st.session_state["route"] = "top_login"
         st.rerun()
+
