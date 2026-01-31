@@ -239,7 +239,6 @@ def render_card(i, row):
           <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
           <b>ログインするとできること</b><br>
           ・気になった柑橘を <b>購入ページまで進める</b><br>
-          ・診断結果を <b>保存してあとから見返せる</b><br>
           ・入力を変えて <b>何度でも試せる</b>
           </p>
         </div>

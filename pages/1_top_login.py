@@ -242,15 +242,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown(
-    """
-    <div class="small-note">
-      ログイン済みなので、診断結果を履歴として保存できるように拡張できます。
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
 # ----------------------------------------------------------
 # Streamlitボタンでページ遷移
 # ----------------------------------------------------------
@@ -262,26 +253,16 @@ with col1:
         st.session_state["navigate_to"] = "input"
 
 with col2:
-    c1, c2 = st.columns(2)
+    # ★ログアウトのみ（診断履歴ボタンは削除）
+    if st.button("ログアウト", use_container_width=True):
+        # ログイン情報を落とす
+        st.session_state["user_logged_in"] = False
+        st.session_state["auth_provider"] = None
+        st.session_state["user_id"] = None
+        st.session_state["user_name"] = None
+        st.session_state["user_email"] = None
+        st.session_state["user_picture"] = None
 
-    with c1:
-        # （任意）将来の導線：マイページ/履歴など
-        # まだ route が無いなら input に送ってOK。後で "mypage" route を作って差し替えれば良い
-        if st.button("診断履歴（準備中）", use_container_width=True):
-            # ひとまず入力へ（将来 mypage route を作るならここを差し替え）
-            st.session_state["navigate_to"] = "input"
-
-    with c2:
-        # ★追加：ログアウト
-        if st.button("ログアウト", use_container_width=True):
-            # ログイン情報を落とす
-            st.session_state["user_logged_in"] = False
-            st.session_state["auth_provider"] = None
-            st.session_state["user_id"] = None
-            st.session_state["user_name"] = None
-            st.session_state["user_email"] = None
-            st.session_state["user_picture"] = None
-
-            # 画面遷移は app.py に戻す
-            st.session_state["route"] = "top"
-            st.rerun()
+        # 画面遷移は app.py に戻す
+        st.session_state["route"] = "top"
+        st.rerun()
