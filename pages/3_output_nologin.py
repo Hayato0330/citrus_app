@@ -266,7 +266,7 @@ with quadrants[3]:
 
     col_a = st.columns(1, gap="small")
 
-    with col_a:
+    with col_a[0]:
         if st.button("ログインして購入リンクを見る", use_container_width=True):
             st.session_state["route"] = "login"
             st.session_state.pop("navigate_to", None)
