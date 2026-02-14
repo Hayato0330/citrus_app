@@ -5,7 +5,9 @@ from urllib.parse import quote
 import textwrap
 import base64
 from pathlib import Path
-
+import json
+import plotly.graph_objects as go
+import streamlit.components.v1 as components
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
@@ -208,6 +210,95 @@ def build_twitter_share(names):
     )
     return f"https://twitter.com/intent/tweet?text={quote(text)}"
 
+# ===== レーダーチャート =====
+RADAR_LABELS = ["甘さ","酸味","苦味","香り","ジューシー","食感"]
+
+def get_user_vals_from_session():
+    return [
+        _safe_int(st.session_state.get("val_brix")),
+        _safe_int(st.session_state.get("val_acid")),
+        _safe_int(st.session_state.get("val_bitterness")),
+        _safe_int(st.session_state.get("val_aroma")),
+        _safe_int(st.session_state.get("val_moisture")),
+        _safe_int(st.session_state.get("val_texture")),
+    ]
+
+def get_item_vals_from_row(row_dict: dict):
+    """
+    TODO: ここを品種側特徴量に置換（Excelの列に合わせる）
+    まずは動作確認用にユーザー値と同じにしておく
+    """
+    return get_user_vals_from_session()
+
+def make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms=30):
+    theta = RADAR_LABELS + [RADAR_LABELS[0]]
+    u = list(user_vals) + [user_vals[0]]
+    it = list(item_vals) + [item_vals[0]]
+
+    u0 = [0] * len(theta)
+    it0 = [0] * len(theta)
+
+    frames = []
+    for k in range(steps):
+        t = k / (steps - 1)
+        frames.append(
+            go.Frame(
+                name=str(k),
+                data=[
+                    go.Scatterpolar(r=[v * t for v in u], theta=theta, fill="toself", name="あなた"),
+                    go.Scatterpolar(r=[v * t for v in it], theta=theta, fill="toself", name="品種"),
+                ],
+            )
+        )
+
+    fig = go.Figure(
+        data=[
+            go.Scatterpolar(r=u0, theta=theta, fill="toself", name="あなた"),
+            go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種"),
+        ],
+        layout=go.Layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, max_r])),
+            showlegend=True,
+            margin=dict(l=10, r=10, t=10, b=10),
+        ),
+        frames=frames,
+    )
+    return fig, frame_ms
+
+def plotly_autoplay_html(fig, height=320, frame_ms=30, div_id="plotlyRadar"):
+    """
+    Plotly.js を iframe 内で描画 → 描画後に Plotly.animate を自動実行
+    参考：Plotly.js animations（Plotly.animate）:contentReference[oaicite:1]{index=1}
+    """
+    fig_json = fig.to_plotly_json()
+    fig_str = json.dumps(fig_json)
+
+    # NOTE:
+    # - CDNでplotly.jsを読み込む（ネット必要。Streamlit Cloudなら通常OK）
+    # - newPlot後、少し待ってanimate（確実性重視）
+    html = f"""
+<div id="{div_id}" style="width:100%;height:{height}px;"></div>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+const fig = {fig_str};
+const gd = document.getElementById("{div_id}");
+
+Plotly.newPlot(gd, fig.data, fig.layout, {{displayModeBar: false}})
+  .then(() => {{
+    setTimeout(() => {{
+      Plotly.animate(gd, null, {{
+        frame: {{duration: {frame_ms}, redraw: true}},
+        transition: {{duration: 0}},
+        mode: "immediate"
+      }});
+    }}, 60);
+  }});
+</script>
+"""
+
+    components.html(html, height=height+20, scrolling=False)
+
+
 # ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
@@ -219,20 +310,35 @@ def render_card(i, row):
     name = pick(row,"Item_name","name","不明")
     desc = pick(row,"Description","description","")
     item_id = pick(row, "Item_ID", default=None)
-    image_url = NO_IMAGE_URL  # デフォルトは必ず no-image
+
+    image_url = NO_IMAGE_URL
     real_url = build_citrus_image_url_from_id(item_id)
     if real_url:
         image_url = real_url
 
-    st.markdown(f"""
-    <div class="card">
-      <h2>{i}. {name}</h2>
-      <div style="display:flex;gap:20px;">
-        <div style="flex:1;">
-          <img src="{image_url}" style="max-width:100%;border-radius:8px;">
-          <p>{desc}</p>
-        </div>
-        <div style="flex:1;text-align:center;">
+    # 外枠（カード）
+    st.markdown(f'<div class="card"><h2>{i}. {name}</h2>', unsafe_allow_html=True)
+
+    left, right = st.columns([1, 1], gap="medium")
+
+    with left:
+        st.markdown(f'<img src="{image_url}" style="max-width:100%;border-radius:8px;">', unsafe_allow_html=True)
+        st.markdown(f"<p>{desc}</p>", unsafe_allow_html=True)
+
+    with right:
+        # レーダー（自動アニメ）
+        row_dict = row._asdict() if hasattr(row, "_asdict") else {}
+        user_vals = get_user_vals_from_session()
+        item_vals = get_item_vals_from_row(row_dict)
+
+        fig, frame_ms = make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms=30)
+
+        # div_idをカードごとに変える（複数カードで衝突しないように）
+        plotly_autoplay_html(fig, height=320, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
+
+        # nologin側：購入導線＋メリット
+        st.markdown("""
+        <div style="text-align:center;">
           <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
           <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
           <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
@@ -242,9 +348,10 @@ def render_card(i, row):
           ・入力を変えて <b>何度でも試せる</b>
           </p>
         </div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 for i,r in enumerate(top_items.itertuples(),1):
     with quadrants[i-1]:
