@@ -268,7 +268,7 @@ def make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms
 def plotly_autoplay_html(fig, height=320, frame_ms=30, div_id="plotlyRadar"):
     """
     Plotly.js を iframe 内で描画 → 描画後に Plotly.animate を自動実行
-    参考：Plotly.js animations（Plotly.animate）:contentReference[oaicite:1]{index=1}
+    参考：Plotly.js animations（Plotly.animate）
     """
     fig_json = fig.to_plotly_json()
     fig_str = json.dumps(fig_json)
@@ -307,8 +307,8 @@ cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
 def render_card(i, row):
-    name = pick(row,"Item_name","name","不明")
-    desc = pick(row,"Description","description","")
+    name = pick(row, "Item_name", "name", "不明")
+    desc = pick(row, "Description", "description", "")
     item_id = pick(row, "Item_ID", default=None)
 
     image_url = NO_IMAGE_URL
@@ -316,39 +316,39 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
-    # 外枠（カード）
-    st.markdown(f'<div class="card"><h2>{i}. {name}</h2>', unsafe_allow_html=True)
+    # Streamlit側でカード枠（安定）
+    with st.container(border=True):
+        st.markdown(f"## {i}. {name}")
 
-    left, right = st.columns([1, 1], gap="medium")
+        left, right = st.columns([1, 1], gap="medium")
 
-    with left:
-        st.markdown(f'<img src="{image_url}" style="max-width:100%;border-radius:8px;">', unsafe_allow_html=True)
-        st.markdown(f"<p>{desc}</p>", unsafe_allow_html=True)
+        with left:
+            st.markdown(
+                f'<img src="{image_url}" style="max-width:100%;border-radius:8px;">',
+                unsafe_allow_html=True
+            )
+            st.markdown(desc)
 
-    with right:
-        # レーダー（自動アニメ）
-        row_dict = row._asdict() if hasattr(row, "_asdict") else {}
-        user_vals = get_user_vals_from_session()
-        item_vals = get_item_vals_from_row(row_dict)
+        with right:
+            row_dict = row._asdict() if hasattr(row, "_asdict") else {}
+            user_vals = get_user_vals_from_session()
+            item_vals = get_item_vals_from_row(row_dict)
 
-        fig, frame_ms = make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms=30)
+            fig, frame_ms = make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms=30)
+            plotly_autoplay_html(fig, height=320, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
 
-        # div_idをカードごとに変える（複数カードで衝突しないように）
-        plotly_autoplay_html(fig, height=320, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
-
-        # nologin側：購入導線＋メリット
-        st.markdown("""
-        <div style="text-align:center;">
-          <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
-          <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
-          <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
-          <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
-          <b>ログインするとできること</b><br>
-          ・気になった柑橘を <b>購入ページまで進める</b><br>
-          ・入力を変えて <b>何度でも試せ</b>
-          </p>
-        </div>
-        """, unsafe_allow_html=True)
+            st.markdown("""
+            <div style="text-align:center;">
+              <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
+              <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
+              <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
+              <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+              <b>ログインするとできること</b><br>
+              ・気になった柑橘を <b>購入ページまで進める</b><br>
+              ・入力を変えて <b>何度でも試せる</b>
+              </p>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
