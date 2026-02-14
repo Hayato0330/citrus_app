@@ -158,7 +158,7 @@ TOPK = 3
 @st.cache_data
 def load_details():
     path = Path(__file__).resolve().parent.parent / "citrus_details_list.xlsx"
-    return pd.read_excel(path, sheet_name="説明と画像")
+    return pd.read_excel(path, sheet_name="description_image")
 
 details_df = load_details()
 
