@@ -283,6 +283,7 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "aroma": int(st.session_state.val_aroma),
             "moisture": int(st.session_state.val_moisture),
             "texture": int(st.session_state.val_texture),
+            "user_id": st.session_state.get("user_id"),
         }
         _append_simple_log(input_dict=input_dict)
 
