@@ -218,7 +218,7 @@ st.markdown("""
 user_name = st.session_state.get("user_name") or "LINEユーザー"
 user_picture = st.session_state.get("user_picture") or ""
 auth_provider = st.session_state.get("auth_provider") or "line"
-user_id = st.session_state.get("user_name") or ""
+user_id = st.session_state.get("user_id") or ""
 
 
 
