@@ -218,6 +218,9 @@ st.markdown("""
 user_name = st.session_state.get("user_name") or "LINEユーザー"
 user_picture = st.session_state.get("user_picture") or ""
 auth_provider = st.session_state.get("auth_provider") or "line"
+user_id = st.session_state.get("user_name") or ""
+
+
 
 avatar_html = ""
 if user_picture:
@@ -234,6 +237,7 @@ st.markdown(
         <div class="user-meta">
           <div class="name">ようこそ、{user_name} さん</div>
           <div class="sub">ログイン方法：{auth_provider.upper()}</div>
+          <div class="id">ID:{user_id} </div>
         </div>
       </div>
       <div class="badge"><span class="badge-dot"></span>ログイン中</div>
