@@ -242,11 +242,11 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
                 tickfont=dict(size=14),
                 rotation=90,
                 direction="clockwise",
-                automargin=True,
+                ticklabelstandoff=12,
             ),
         ),
         showlegend=False,
-        margin=dict(l=60, r=60, t=40, b=60),
+        margin=dict(l=70, r=90, t=40, b=80),
     ),
     frames=frames,
     )
