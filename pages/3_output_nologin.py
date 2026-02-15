@@ -166,7 +166,6 @@ details_df = load_details()
 FEATURES = ["brix", "acid", "bitterness", "aroma", "moisture", "texture"]
 
 @st.cache_data(ttl=3600)
-@st.cache_data(ttl=3600)
 def load_feature_db_from_r2():
     ns = runpy.run_path("pages/2_calculation_logic.py")
     df = ns["_prepare_dataframe"]()
@@ -237,16 +236,20 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
     data=[go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種")],
     layout=go.Layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[min_r, max_r], tickmode="array", tickvals=[1,2,3,4,5,6]),
+            radialaxis=dict(
+                visible=True,
+                range=[min_r, max_r],
+                tickmode="array",
+                tickvals=[1,2,3,4,5,6],
+            ),
             angularaxis=dict(
-                tickfont=dict(size=14),
+                tickfont=dict(size=13),
                 rotation=90,
-                direction="clockwise",
-                ticklabelstandoff=12,
+                direction="clockwise"
             ),
         ),
         showlegend=False,
-        margin=dict(l=70, r=90, t=40, b=80),
+        margin=dict(l=80, r=80, t=40, b=80),  # 余白で逃がす
     ),
     frames=frames,
     )
