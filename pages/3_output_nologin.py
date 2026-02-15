@@ -166,13 +166,27 @@ details_df = load_details()
 FEATURES = ["brix", "acid", "bitterness", "aroma", "moisture", "texture"]
 
 @st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600)
 def load_feature_db_from_r2():
-    # 2_calculation_logic.py を「改変せず」利用してR2のDFを取る
     ns = runpy.run_path("pages/2_calculation_logic.py")
-    df = ns["_prepare_dataframe"]()  # R2から読み込んで整形済みDFを返す
-    # idで引きやすいようにindex化（超重要：カードごとに検索しない）
+    df = ns["_prepare_dataframe"]()
+
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    if "id" not in df.columns:
+        st.error("特徴量DFに 'id' 列がありません。")
+        return pd.DataFrame()
+
+    df = df.copy()
+    try:
+        df["id"] = df["id"].astype(int)
+    except Exception:
+        pass
+
     df = df.set_index("id", drop=False)
     return df
+
 
 feature_df = load_feature_db_from_r2()
 
@@ -220,35 +234,40 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
         )
 
     fig = go.Figure(
-        data=[go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種")],
-        layout=go.Layout(
-            polar=dict(radialaxis=dict(visible=True, range=[min_r, max_r])),
-            showlegend=False,  # 凡例いらない
-            margin=dict(l=10, r=10, t=10, b=10),
+    data=[go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種")],
+    layout=go.Layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[min_r, max_r], tickmode="array", tickvals=[1,2,3,4,5,6]),
+            angularaxis=dict(
+                tickfont=dict(size=14),
+                rotation=90,
+                direction="clockwise",
+                automargin=True,
+            ),
         ),
-        frames=frames,
+        showlegend=False,
+        margin=dict(l=60, r=60, t=40, b=60),
+    ),
+    frames=frames,
     )
     return fig, frame_ms
 
-def plotly_autoplay_html(fig, height=320, frame_ms=30, div_id="plotlyRadar"):
-    """
-    Plotly.js を iframe 内で描画 → 描画後に Plotly.animate を自動実行
-    参考：Plotly.js animations（Plotly.animate）
-    """
-    fig_json = fig.to_plotly_json()
-    fig_str = json.dumps(fig_json)
 
-    # NOTE:
-    # - CDNでplotly.jsを読み込む（ネット必要。Streamlit Cloudなら通常OK）
-    # - newPlot後、少し待ってanimate（確実性重視）
-    html = f"""
-<div id="{div_id}" style="width:100%;height:{height}px;"></div>
+def plotly_autoplay_html_str(fig, height=320, frame_ms=30, div_id="plotlyRadar"):
+    fig_json = fig.to_plotly_json()
+    fig_str = json.dumps(fig_json, ensure_ascii=False)
+
+    return f"""
+<div style="background:#fff; padding:18px 28px; border-radius:10px;">
+  <div id="{div_id}" style="width:100%; height:{height}px;"></div>
+</div>
+
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
 const fig = {fig_str};
 const gd = document.getElementById("{div_id}");
 
-Plotly.newPlot(gd, fig.data, fig.layout, {{displayModeBar: false}})
+Plotly.newPlot(gd, fig.data, fig.layout, {{displayModeBar: false, responsive: true}})
   .then(() => {{
     setTimeout(() => {{
       Plotly.animate(gd, null, {{
@@ -256,12 +275,10 @@ Plotly.newPlot(gd, fig.data, fig.layout, {{displayModeBar: false}})
         transition: {{duration: 0}},
         mode: "immediate"
       }});
-    }}, 60);
+    }}, 150);
   }});
 </script>
 """
-
-    components.html(html, height=height+20, scrolling=False)
 
 # ===== 何派 + Xシェア =====
 def compute_taste_type() -> str:
@@ -305,8 +322,8 @@ cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
 def render_card(i, row):
-    name = pick(row, "Item_name", "name", "不明")
-    desc = pick(row, "Description", "description", "")
+    name = pick(row, "Item_name", "name", default="不明")
+    desc = pick(row, "Description", "description", default="")
     item_id = pick(row, "Item_ID", default=None)
 
     image_url = NO_IMAGE_URL
@@ -314,58 +331,47 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
-    # 1) card枠だけHTMLで開始
-    st.markdown(f'<div class="card"><h2>{i}. {name}</h2>', unsafe_allow_html=True)
+    try:
+        i_id = int(item_id)
+    except Exception:
+        i_id = -1
 
-    # 2) 中身はStreamlitで左右分割（ここが安定）
-    left, right = st.columns([1, 1], gap="medium")
+    item_vals = get_item_vals_from_feature_db(i_id)
+    fig, frame_ms = make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=30)
 
-    with left:
-        st.markdown(
-            f'<img src="{image_url}" style="max-width:100%;border-radius:8px;">',
-            unsafe_allow_html=True
-        )
-        # 元の <p> に近い見た目にする
-        st.markdown(f"<p>{desc}</p>", unsafe_allow_html=True)
+    radar_div_id = f"plotlyRadar_{i}"
+    radar_html = plotly_autoplay_html_str(fig, height=320, frame_ms=frame_ms, div_id=radar_div_id)
 
-    with right:
-        # 品種の指標をR2 DBから取得
-        try:
-            i_id = int(item_id)
-        except Exception:
-            i_id = -1
+    card_html = f"""
+<div class="card">
+  <h2>{i}. {name}</h2>
 
-        item_vals = get_item_vals_from_feature_db(i_id)
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="flex:1;">
+      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+      <p style="font-size:14px;color:#333;">{desc}</p>
+    </div>
 
-        fig, frame_ms = make_radar_fig_with_frames(
-            item_vals,
-            min_r=1,
-            max_r=6,
-            steps=18,
-            frame_ms=30,
-        )
+    <div style="flex:1;text-align:center;">
+      {radar_html}
 
-        plotly_autoplay_html(fig, height=320, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
+      <div style="margin-top:10px;">
+        <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
+        <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
+        <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
 
-    # ↓以下、購入ボタンなどはそのまま
-
-
-        # 元の右側UI（中央寄せ）
-        st.markdown("""
-        <div style="text-align:center;">
-          <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
-          <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
-          <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
-          <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+        <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
           <b>ログインするとできること</b><br>
           ・気になった柑橘を <b>購入ページまで進める</b><br>
           ・入力を変えて <b>何度でも試せる</b>
-          </p>
-        </div>
-        """, unsafe_allow_html=True)
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+"""
+    components.html(card_html, height=560, scrolling=False)
 
-    # 3) card枠を閉じる
-    st.markdown("</div>", unsafe_allow_html=True)
 
 for i,r in enumerate(top_items.itertuples(),1):
     with quadrants[i-1]:
