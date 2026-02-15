@@ -218,7 +218,6 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
     theta = RADAR_LABELS + [RADAR_LABELS[0]]
     it = list(item_vals) + [item_vals[0]]
 
-    # 初期は 1（中心0スタートにしない）
     it0 = [min_r] * len(theta)
 
     frames = []
@@ -228,43 +227,43 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
         frames.append(
             go.Frame(
                 name=str(k),
-                data=[go.Scatterpolar(r=cur, theta=theta, fill="toself", name="品種")],
+                data=[go.Scatterpolar(r=cur, theta=theta, fill="toself")],
             )
         )
 
     fig = go.Figure(
-    data=[go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種")],
-    layout=go.Layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[min_r, max_r],
-                tickmode="array",
-                tickvals=[1,2,3,4,5,6],
+        data=[go.Scatterpolar(r=it0, theta=theta, fill="toself")],
+        layout=go.Layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[min_r, max_r],
+                    tickmode="array",
+                    tickvals=[1, 2, 3, 4, 5, 6],
+                ),
+                angularaxis=dict(
+                    tickfont=dict(size=12),      # 少し小さくして見切れ回避
+                    rotation=90,
+                    direction="clockwise",
+                    ticklabelstandoff=14,        # ラベルを外側へ
+                ),
             ),
-            angularaxis=dict(
-                tickfont=dict(size=13),
-                rotation=90,
-                direction="clockwise"
-            ),
+            showlegend=False,
+            margin=dict(l=80, r=80, t=20, b=80),  # ←横幅の白余白を確保
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
         ),
-        showlegend=False,
-        margin=dict(l=80, r=80, t=40, b=80),  # 余白で逃がす
-    ),
-    frames=frames,
+        frames=frames,
     )
     return fig, frame_ms
 
 
-def plotly_autoplay_html_str(fig, height=320, frame_ms=30, div_id="plotlyRadar"):
+def plotly_autoplay_html(fig, height=340, frame_ms=30, div_id="plotlyRadar"):
     fig_json = fig.to_plotly_json()
     fig_str = json.dumps(fig_json, ensure_ascii=False)
 
-    return f"""
-<div style="background:#fff; padding:18px 28px; border-radius:10px;">
-  <div id="{div_id}" style="width:100%; height:{height}px;"></div>
-</div>
-
+    html = f"""
+<div id="{div_id}" style="width:100%;height:{height}px;"></div>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script>
 const fig = {fig_str};
@@ -278,10 +277,11 @@ Plotly.newPlot(gd, fig.data, fig.layout, {{displayModeBar: false, responsive: tr
         transition: {{duration: 0}},
         mode: "immediate"
       }});
-    }}, 150);
+    }}, 120);
   }});
 </script>
 """
+    components.html(html, height=height + 10, scrolling=False)
 
 # ===== 何派 + Xシェア =====
 def compute_taste_type() -> str:
@@ -334,47 +334,50 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
-    try:
-        i_id = int(item_id)
-    except Exception:
-        i_id = -1
+    # カード開始（loginと同じ見た目）
+    st.markdown(f"""
+    <div class="card">
+      <h2>{i}. {name}</h2>
+    """, unsafe_allow_html=True)
 
-    item_vals = get_item_vals_from_feature_db(i_id)
-    fig, frame_ms = make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=30)
+    # 中身はStreamlitで左右分割（CSSが効く）
+    left, right = st.columns([1, 1], gap="medium")
 
-    radar_div_id = f"plotlyRadar_{i}"
-    radar_html = plotly_autoplay_html_str(fig, height=320, frame_ms=frame_ms, div_id=radar_div_id)
+    with left:
+        st.markdown(
+            f'<img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">',
+            unsafe_allow_html=True
+        )
+        st.markdown(f'<p style="font-size:14px;color:#333;line-height:1.6;">{desc}</p>', unsafe_allow_html=True)
 
-    card_html = f"""
-<div class="card">
-  <h2>{i}. {name}</h2>
+    with right:
+        # レーダー（右カラムだけ iframe）
+        try:
+            i_id = int(item_id)
+        except Exception:
+            i_id = -1
 
-  <div style="display:flex;gap:20px;align-items:flex-start;">
-    <div style="flex:1;">
-      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-      <p style="font-size:14px;color:#333;">{desc}</p>
-    </div>
+        item_vals = get_item_vals_from_feature_db(i_id)
+        fig, frame_ms = make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=30)
+        plotly_autoplay_html(fig, height=340, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
 
-    <div style="flex:1;text-align:center;">
-      {radar_html}
+        # 色付きボタン（見た目はログイン版、クリックは無効化）
+        st.markdown(f"""
+        <div style="text-align:center;margin-top:10px;">
+          <a class="link-btn amazon-btn disabled-btn" href="#">Amazonで生果を探す</a><br>
+          <a class="link-btn rakuten-btn disabled-btn" href="#">楽天で贈答/家庭用を探す</a><br>
+          <a class="link-btn satofuru-btn disabled-btn" href="#">ふるさと納税で探す</a>
 
-      <div style="margin-top:10px;">
-        <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
-        <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
-        <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
+          <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+            <b>ログインするとできること</b><br>
+            ・気になった柑橘を <b>購入ページまで進める</b><br>
+            ・入力を変えて <b>何度でも試せる</b>
+          </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
-          <b>ログインするとできること</b><br>
-          ・気になった柑橘を <b>購入ページまで進める</b><br>
-          ・入力を変えて <b>何度でも試せる</b>
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
-"""
-    components.html(card_html, height=560, scrolling=False)
-
+    # カード閉じ
+    st.markdown("</div>", unsafe_allow_html=True)
 
 for i,r in enumerate(top_items.itertuples(),1):
     with quadrants[i-1]:
