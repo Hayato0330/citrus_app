@@ -224,12 +224,7 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
     for k in range(steps):
         t = k / (steps - 1)
         cur = [min_r + (v - min_r) * t for v in it]
-        frames.append(
-            go.Frame(
-                name=str(k),
-                data=[go.Scatterpolar(r=cur, theta=theta, fill="toself")],
-            )
-        )
+        frames.append(go.Frame(name=str(k), data=[go.Scatterpolar(r=cur, theta=theta, fill="toself")]))
 
     fig = go.Figure(
         data=[go.Scatterpolar(r=it0, theta=theta, fill="toself")],
@@ -241,22 +236,18 @@ def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=3
                     tickmode="array",
                     tickvals=[1, 2, 3, 4, 5, 6],
                 ),
+                # ★ここを最小構成にする（ValueError回避）
                 angularaxis=dict(
-                    tickfont=dict(size=12),      # 少し小さくして見切れ回避
-                    rotation=90,
-                    direction="clockwise",
-                    ticklabelstandoff=14,        # ラベルを外側へ
+                    tickfont=dict(size=12),
                 ),
             ),
             showlegend=False,
-            margin=dict(l=80, r=80, t=20, b=80),  # ←横幅の白余白を確保
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
+            # ★見切れ対策は margin と height でやる（互換性が高い）
+            margin=dict(l=90, r=90, t=25, b=90),
         ),
         frames=frames,
     )
     return fig, frame_ms
-
 
 def plotly_autoplay_html(fig, height=340, frame_ms=30, div_id="plotlyRadar"):
     fig_json = fig.to_plotly_json()
@@ -329,44 +320,25 @@ def render_card(i, row):
     desc = pick(row, "Description", "description", default="")
     item_id = pick(row, "Item_ID", default=None)
 
-    image_url = NO_IMAGE_URL
+    image_url = NO_IMAGE_URL  # デフォルトは必ず no-image
     real_url = build_citrus_image_url_from_id(item_id)
     if real_url:
         image_url = real_url
 
-    # カード開始（loginと同じ見た目）
-    st.markdown(f"""
+    html = f"""
     <div class="card">
       <h2>{i}. {name}</h2>
-    """, unsafe_allow_html=True)
 
-    # 中身はStreamlitで左右分割（CSSが効く）
-    left, right = st.columns([1, 1], gap="medium")
+      <div style="display:flex;gap:20px;align-items:flex-start;">
+        <div style="flex:1;">
+          <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+          <p style="font-size:14px;color:#333; margin:0;">{desc}</p>
+        </div>
 
-    with left:
-        st.markdown(
-            f'<img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">',
-            unsafe_allow_html=True
-        )
-        st.markdown(f'<p style="font-size:14px;color:#333;line-height:1.6;">{desc}</p>', unsafe_allow_html=True)
-
-    with right:
-        # レーダー（右カラムだけ iframe）
-        try:
-            i_id = int(item_id)
-        except Exception:
-            i_id = -1
-
-        item_vals = get_item_vals_from_feature_db(i_id)
-        fig, frame_ms = make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=30)
-        plotly_autoplay_html(fig, height=340, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
-
-        # 色付きボタン（見た目はログイン版、クリックは無効化）
-        st.markdown(f"""
-        <div style="text-align:center;margin-top:10px;">
-          <a class="link-btn amazon-btn disabled-btn" href="#">Amazonで生果を探す</a><br>
-          <a class="link-btn rakuten-btn disabled-btn" href="#">楽天で贈答/家庭用を探す</a><br>
-          <a class="link-btn satofuru-btn disabled-btn" href="#">ふるさと納税で探す</a>
+        <div style="flex:1;text-align:center;">
+          <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
+          <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
+          <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
 
           <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
             <b>ログインするとできること</b><br>
@@ -374,10 +346,10 @@ def render_card(i, row):
             ・入力を変えて <b>何度でも試せる</b>
           </p>
         </div>
-        """, unsafe_allow_html=True)
-
-    # カード閉じ
-    st.markdown("</div>", unsafe_allow_html=True)
+      </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
 for i,r in enumerate(top_items.itertuples(),1):
     with quadrants[i-1]:
