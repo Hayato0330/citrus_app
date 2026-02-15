@@ -6,6 +6,7 @@ import textwrap
 import base64
 from pathlib import Path
 import json
+import runpy
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
 # ===== ページ設定 =====
@@ -162,6 +163,19 @@ def load_details():
 
 details_df = load_details()
 
+FEATURES = ["brix", "acid", "bitterness", "aroma", "moisture", "texture"]
+
+@st.cache_data(ttl=3600)
+def load_feature_db_from_r2():
+    # 2_calculation_logic.py を「改変せず」利用してR2のDFを取る
+    ns = runpy.run_path("pages/2_calculation_logic.py")
+    df = ns["_prepare_dataframe"]()  # R2から読み込んで整形済みDFを返す
+    # idで引きやすいようにindex化（超重要：カードごとに検索しない）
+    df = df.set_index("id", drop=False)
+    return df
+
+feature_df = load_feature_db_from_r2()
+
 # ===== top_ids から表示用 top_items を作る（計算なし）=====
 top_ids_int = []
 for x in top_ids:
@@ -176,89 +190,40 @@ df_sel = df_sel.sort_values("__order").reset_index(drop=True)
 
 top_items = df_sel.head(TOPK)
 
-# ===== 何派 + Xシェア =====
-def compute_taste_type() -> str:
-    vals = {
-        "sweet": _safe_int(st.session_state.get("val_brix")),
-        "sour": _safe_int(st.session_state.get("val_acid")),
-        "bitter": _safe_int(st.session_state.get("val_bitterness")),
-        "aroma": _safe_int(st.session_state.get("val_aroma")),
-        "juicy": _safe_int(st.session_state.get("val_moisture")),
-        "texture": _safe_int(st.session_state.get("val_texture")),
-    }
-    labels = {
-        "sweet":"甘党","sour":"さっぱり","bitter":"大人味",
-        "aroma":"香り","juicy":"ジューシー","texture":"ぷりぷり"
-    }
-    priority = ["aroma","sour","sweet","juicy","texture","bitter"]
-    ranked = sorted(vals.keys(), key=lambda k: (-vals[k], priority.index(k)))
-    a, b = labels[ranked[0]], labels[ranked[1]]
-    return f"{a}{b}派" if a != b else f"{a}派"
-
-def build_twitter_share(names):
-    taste = compute_taste_type()
-    n = names + ["—","—","—"]
-    text = (
-        "🍊柑橘おすすめ診断の結果！\n\n"
-        f"【私は “{taste}” でした🍋】\n\n"
-        f"🏆 1位：{n[0]}\n"
-        f"🥈 2位：{n[1]}\n"
-        f"🥉 3位：{n[2]}\n\n"
-        "あなたのタイプも出るよ👇\n"
-        "#柑橘おすすめ\n"
-        "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
-    )
-    return f"https://twitter.com/intent/tweet?text={quote(text)}"
-
 # ===== レーダーチャート =====
 RADAR_LABELS = ["甘さ","酸味","苦味","香り","ジューシー","食感"]
 
-def get_user_vals_from_session():
-    return [
-        _safe_int(st.session_state.get("val_brix")),
-        _safe_int(st.session_state.get("val_acid")),
-        _safe_int(st.session_state.get("val_bitterness")),
-        _safe_int(st.session_state.get("val_aroma")),
-        _safe_int(st.session_state.get("val_moisture")),
-        _safe_int(st.session_state.get("val_texture")),
-    ]
+def get_item_vals_from_feature_db(item_id: int):
+    if item_id in feature_df.index:
+        row = feature_df.loc[item_id]
+        # FEATURES順で取り出す（= レーダーの軸順と一致）
+        return [float(row[c]) for c in FEATURES]
+    # 見つからない場合のフォールバック（落とさない）
+    return [1, 1, 1, 1, 1, 1]
 
-def get_item_vals_from_row(row_dict: dict):
-    """
-    TODO: ここを品種側特徴量に置換（Excelの列に合わせる）
-    まずは動作確認用にユーザー値と同じにしておく
-    """
-    return get_user_vals_from_session()
-
-def make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms=30):
+def make_radar_fig_with_frames(item_vals, min_r=1, max_r=6, steps=18, frame_ms=30):
     theta = RADAR_LABELS + [RADAR_LABELS[0]]
-    u = list(user_vals) + [user_vals[0]]
     it = list(item_vals) + [item_vals[0]]
 
-    u0 = [0] * len(theta)
-    it0 = [0] * len(theta)
+    # 初期は 1（中心0スタートにしない）
+    it0 = [min_r] * len(theta)
 
     frames = []
     for k in range(steps):
         t = k / (steps - 1)
+        cur = [min_r + (v - min_r) * t for v in it]
         frames.append(
             go.Frame(
                 name=str(k),
-                data=[
-                    go.Scatterpolar(r=[v * t for v in u], theta=theta, fill="toself", name="あなた"),
-                    go.Scatterpolar(r=[v * t for v in it], theta=theta, fill="toself", name="品種"),
-                ],
+                data=[go.Scatterpolar(r=cur, theta=theta, fill="toself", name="品種")],
             )
         )
 
     fig = go.Figure(
-        data=[
-            go.Scatterpolar(r=u0, theta=theta, fill="toself", name="あなた"),
-            go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種"),
-        ],
+        data=[go.Scatterpolar(r=it0, theta=theta, fill="toself", name="品種")],
         layout=go.Layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, max_r])),
-            showlegend=True,
+            polar=dict(radialaxis=dict(visible=True, range=[min_r, max_r])),
+            showlegend=False,  # 凡例いらない
             margin=dict(l=10, r=10, t=10, b=10),
         ),
         frames=frames,
@@ -298,6 +263,39 @@ Plotly.newPlot(gd, fig.data, fig.layout, {{displayModeBar: false}})
 
     components.html(html, height=height+20, scrolling=False)
 
+# ===== 何派 + Xシェア =====
+def compute_taste_type() -> str:
+    vals = {
+        "sweet": _safe_int(st.session_state.get("val_brix")),
+        "sour": _safe_int(st.session_state.get("val_acid")),
+        "bitter": _safe_int(st.session_state.get("val_bitterness")),
+        "aroma": _safe_int(st.session_state.get("val_aroma")),
+        "juicy": _safe_int(st.session_state.get("val_moisture")),
+        "texture": _safe_int(st.session_state.get("val_texture")),
+    }
+    labels = {
+        "sweet":"甘党","sour":"さっぱり","bitter":"大人味",
+        "aroma":"香り","juicy":"ジューシー","texture":"ぷりぷり"
+    }
+    priority = ["aroma","sour","sweet","juicy","texture","bitter"]
+    ranked = sorted(vals.keys(), key=lambda k: (-vals[k], priority.index(k)))
+    a, b = labels[ranked[0]], labels[ranked[1]]
+    return f"{a}{b}派" if a != b else f"{a}派"
+
+def build_twitter_share(names):
+    taste = compute_taste_type()
+    n = names + ["—","—","—"]
+    text = (
+        "🍊柑橘おすすめ診断の結果！\n\n"
+        f"【私は “{taste}” でした🍋】\n\n"
+        f"🏆 1位：{n[0]}\n"
+        f"🥈 2位：{n[1]}\n"
+        f"🥉 3位：{n[2]}\n\n"
+        "あなたのタイプも出るよ👇\n"
+        "#柑橘おすすめ\n"
+        "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
+    )
+    return f"https://twitter.com/intent/tweet?text={quote(text)}"
 
 # ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
@@ -316,42 +314,58 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
-    # Streamlit側でカード枠（安定）
-    with st.container(border=True):
-        st.markdown(f"## {i}. {name}")
+    # 1) card枠だけHTMLで開始
+    st.markdown(f'<div class="card"><h2>{i}. {name}</h2>', unsafe_allow_html=True)
 
-        left, right = st.columns([1, 1], gap="medium")
+    # 2) 中身はStreamlitで左右分割（ここが安定）
+    left, right = st.columns([1, 1], gap="medium")
 
-        with left:
-            st.markdown(
-                f'<img src="{image_url}" style="max-width:100%;border-radius:8px;">',
-                unsafe_allow_html=True
-            )
-            st.markdown(desc)
+    with left:
+        st.markdown(
+            f'<img src="{image_url}" style="max-width:100%;border-radius:8px;">',
+            unsafe_allow_html=True
+        )
+        # 元の <p> に近い見た目にする
+        st.markdown(f"<p>{desc}</p>", unsafe_allow_html=True)
 
-        with right:
-            row_dict = row._asdict() if hasattr(row, "_asdict") else {}
-            user_vals = get_user_vals_from_session()
-            item_vals = get_item_vals_from_row(row_dict)
+    with right:
+        # 品種の指標をR2 DBから取得
+        try:
+            i_id = int(item_id)
+        except Exception:
+            i_id = -1
 
-            fig, frame_ms = make_radar_fig_with_frames(user_vals, item_vals, max_r=5, steps=18, frame_ms=30)
-            plotly_autoplay_html(fig, height=320, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
+        item_vals = get_item_vals_from_feature_db(i_id)
 
-            st.markdown("""
-            <div style="text-align:center;">
-              <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
-              <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
-              <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
-              <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
-              <b>ログインするとできること</b><br>
-              ・気になった柑橘を <b>購入ページまで進める</b><br>
-              ・入力を変えて <b>何度でも試せる</b>
-              </p>
-            </div>
-            """, unsafe_allow_html=True)
+        fig, frame_ms = make_radar_fig_with_frames(
+            item_vals,
+            min_r=1,
+            max_r=6,
+            steps=18,
+            frame_ms=30,
+        )
 
+        plotly_autoplay_html(fig, height=320, frame_ms=frame_ms, div_id=f"plotlyRadar_{i}")
+
+    # ↓以下、購入ボタンなどはそのまま
+
+
+        # 元の右側UI（中央寄せ）
+        st.markdown("""
+        <div style="text-align:center;">
+          <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
+          <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
+          <div class="link-btn satofuru-btn disabled-btn">ふるさと納税で探す</div>
+          <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+          <b>ログインするとできること</b><br>
+          ・気になった柑橘を <b>購入ページまで進める</b><br>
+          ・入力を変えて <b>何度でも試せる</b>
+          </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 3) card枠を閉じる
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 for i,r in enumerate(top_items.itertuples(),1):
     with quadrants[i-1]:
