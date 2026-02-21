@@ -130,13 +130,13 @@ elif route == "result_login":
             st.rerun()
 
 ## ログイン無
-# elif route == "result":
-#     if not st.session_state.get("top_ids"):
-#         st.session_state["route"] = "top"
-#         st.rerun()
-#     runpy.run_path("pages/3_output_nologin.py")
+elif route == "result":
+    if not st.session_state.get("top_ids"):
+        st.session_state["route"] = "top"
+        st.rerun()
+    runpy.run_path("pages/3_output_nologin.py")
 
-#     with st.sidebar:
-#         if st.button("← 入力に戻る", use_container_width=True):
-#             st.session_state["route"] = "input"
-#             st.rerun()
+    with st.sidebar:
+        if st.button("← 入力に戻る", use_container_width=True):
+            st.session_state["route"] = "input"
+            st.rerun()
