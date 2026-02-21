@@ -192,7 +192,7 @@ def build_twitter_share(names: list[str]) -> str:
 @st.cache_data
 def load_details_df() -> pd.DataFrame:
     path = Path(__file__).resolve().parent.parent / "citrus_details_list.xlsx"
-    df = pd.read_excel(path, sheet_name="説明と画像")
+    df = pd.read_excel(path, sheet_name="description_image")
     # 期待列の正規化（念のため）
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
