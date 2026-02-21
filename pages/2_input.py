@@ -147,7 +147,9 @@ def _append_simple_log(input_dict: dict) -> None:
 
     try:
         r = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"}, timeout=5)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            st.error(f"ログAPIエラー: {r.status_code}\n{r.text}")
+            return
         st.session_state["last_log_key"] = key
     except Exception as e:
         st.info(f"ログ送信をスキップした（理由：{e}）")
