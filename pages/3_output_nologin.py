@@ -201,7 +201,7 @@ def render_card(i, row):
     desc = pick(row, "Description", "description", default="")
     item_id = pick(row, "Item_ID", default=None)
 
-    image_url = NO_IMAGE_URL
+    image_url = NO_IMAGE_URL  # デフォルトは必ず no-image
     real_url = build_citrus_image_url_from_id(item_id)
     if real_url:
         image_url = real_url
@@ -214,6 +214,7 @@ def render_card(i, row):
           <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
           <p style="font-size:14px;color:#333;">{desc}</p>
         </div>
+
         <div style="flex:1;text-align:center;">
           <div class="link-btn amazon-btn disabled-btn">Amazonで生果を探す</div><br>
           <div class="link-btn rakuten-btn disabled-btn">楽天で贈答/家庭用を探す</div><br>
