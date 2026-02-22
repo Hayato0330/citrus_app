@@ -73,52 +73,72 @@ NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeh
 
 
 # ===== CSS（login版そのまま）=====
-st.markdown(textwrap.dedent("""
-<style>
-body { background-color: #FFF8F0; }
+st.markdown(
+    textwrap.dedent(
+        """
+        <style>
+        body { background-color: #FFF8F0; }
 
-.card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.12);
-  border: 1px solid #eee;
-}
-.card h2, .card h3 { color:#000; margin-top:0; }
+        .card {
+          background-color: #ffffff;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 20px;
+          box-shadow: 0 4px 12px rgba(0,0,0,.12);
+          border: 1px solid #eee;
+        }
+        .card h2, .card h3 { color:#000; margin-top:0; }
 
-.match-score { color:#f59e0b; font-weight:bold; }
+        .match-score { color:#f59e0b; font-weight:bold; }
 
-.link-btn {
-  display:inline-block;
-  padding:8px 14px;
-  margin:6px 0;
-  border-radius:6px;
-  color:#fff !important;
-  text-decoration:none;
-  font-weight:600;
-  font-size:14px;
-  transition:opacity .15s;
-  cursor:pointer;
-}
-.link-btn img { height:16px; vertical-align:middle; margin-right:6px; }
-.link-btn:hover { opacity:.9; }
+        .link-btn {
+          display:inline-block;
+          padding:8px 14px;
+          margin:6px 0;
+          border-radius:6px;
+          color:#fff !important;
+          text-decoration:none;
+          font-weight:600;
+          font-size:14px;
+          transition:opacity .15s;
+          cursor:pointer;
+        }
+        .link-btn img { height:16px; vertical-align:middle; margin-right:6px; }
+        .link-btn:hover { opacity:.9; }
 
-.amazon-btn { background-color:#00BFFF; }
-.rakuten-btn { background-color:#BF0000; }
-.satofuru-btn { background-color:#D2691E; }
-.x-btn {
-  background-color:#ffffff;
-  color:#000 !important;
-  border:1px solid #ddd;
-}
+        .amazon-btn { background-color:#00BFFF; }
+        .rakuten-btn { background-color:#BF0000; }
+        .satofuru-btn { background-color:#D2691E; }
+        .x-btn {
+          background-color:#ffffff;
+          color:#000 !important;
+          border:1px solid #ddd;
+        }
 
-.amazon-btn:hover { background-color:#87CEEB; }
-.rakuten-btn:hover { background-color:#990000; }
-.satofuru-btn:hover { background-color:#b85c19; }
-.x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
-</style>
-"""), unsafe_allow_html=True)
+        .amazon-btn:hover { background-color:#87CEEB; }
+        .rakuten-btn:hover { background-color:#990000; }
+        .satofuru-btn:hover { background-color:#b85c19; }
+        .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
+        [data-testid="stToolbar"] {
+            display: none !important;
+            height: 0 !important;
+        }
+        [data-testid="stDecoration"] {
+            display: none !important;
+        }
+        html, body, #root, [data-testid="stAppViewContainer"] {
+            background-color: transparent !important;
+        }
+        section[data-testid="stSidebar"] { display: none !important; }
+        div[data-testid="stSidebar"] { display: none !important; }
+        </style>
+        """
+    ),
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     f"""

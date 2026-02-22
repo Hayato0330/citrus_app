@@ -118,13 +118,26 @@ st.markdown(
         .rakuten-btn:hover { background-color:#990000; }
         .satofuru-btn:hover { background-color:#b85c19; }
         .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
-
-        /* ===== nologin: 外部リンク無効 ===== */
         .disabled-btn {
           opacity: 0.6;
           cursor: not-allowed;
           pointer-events: none;
         }
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
+        [data-testid="stToolbar"] {
+            display: none !important;
+            height: 0 !important;
+        }
+        [data-testid="stDecoration"] {
+            display: none !important;
+        }
+        html, body, #root, [data-testid="stAppViewContainer"] {
+            background-color: transparent !important;
+        }
+        section[data-testid="stSidebar"] { display: none !important; }
+        div[data-testid="stSidebar"] { display: none !important; }
         </style>
         """
     ),
