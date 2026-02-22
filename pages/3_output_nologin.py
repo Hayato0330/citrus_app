@@ -1,17 +1,14 @@
 # pages/3_output_nologin.py
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 from urllib.parse import quote
 import boto3
 import textwrap
 import base64
 from pathlib import Path
 from io import BytesIO
-
-# ★追加：Plotly + components（カードを1枚=1 iframeで完結させる）
-import plotly.graph_objects as go
-import plotly.io as pio
-import streamlit.components.v1 as components
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -78,20 +75,89 @@ def build_citrus_image_url_from_id(item_id) -> str:
 NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.png"
 NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
 
-# ===== CSS（Streamlit側：サイドバー等を消して背景を適用）=====
+# ===== CSS =====
 st.markdown(
     textwrap.dedent(
         """
         <style>
-        header[data-testid="stHeader"] { display: none !important; }
-        [data-testid="stToolbar"] { display: none !important; height: 0 !important; }
-        [data-testid="stDecoration"] { display: none !important; }
-        section[data-testid="stSidebar"], div[data-testid="stSidebar"] { display: none !important; }
-        [data-testid="collapsedControl"] { display: none !important; }
-        button[kind="header"], button[title="Toggle sidebar"], button[aria-label="Toggle sidebar"] { display: none !important; }
+        body { background-color: #FFF8F0; }
 
+        .card {
+          background-color: #ffffff;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 20px;
+          box-shadow: 0 4px 12px rgba(0,0,0,.12);
+          border: 1px solid #eee;
+        }
+        .card h2, .card h3 { color:#000; margin-top:0; }
+
+        .match-score { color:#f59e0b; font-weight:bold; }
+
+        .link-btn {
+          display:inline-block;
+          padding:8px 14px;
+          margin:6px 0;
+          border-radius:6px;
+          color:#fff !important;
+          text-decoration:none;
+          font-weight:600;
+          font-size:14px;
+          transition:opacity .15s;
+          cursor:pointer;
+        }
+        .link-btn img { height:16px; vertical-align:middle; margin-right:6px; }
+        .link-btn:hover { opacity:.9; }
+
+        .amazon-btn { background-color:#00BFFF; }
+        .rakuten-btn { background-color:#BF0000; }
+        .satofuru-btn { background-color:#D2691E; }
+        .x-btn {
+          background-color:#ffffff;
+          color:#000 !important;
+          border:1px solid #ddd;
+        }
+
+        .amazon-btn:hover { background-color:#87CEEB; }
+        .rakuten-btn:hover { background-color:#990000; }
+        .satofuru-btn:hover { background-color:#b85c19; }
+        .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
+
+        .disabled-btn {
+          opacity: 0.6;
+          cursor: not-allowed;
+          pointer-events: none;
+        }
+        header[data-testid="stHeader"] {
+          display: none !important;
+        }
+        [data-testid="stToolbar"] {
+          display: none !important;
+          height: 0 !important;
+        }
+        [data-testid="stDecoration"] {
+          display: none !important;
+        }
         html, body, #root, [data-testid="stAppViewContainer"] {
           background-color: transparent !important;
+        }
+        section[data-testid="stSidebar"] {
+          display: none !important;
+        }
+        div[data-testid="stSidebar"] {
+          display: none !important;
+        }
+        [data-testid="collapsedControl"] {
+          display: none !important;
+        }
+        button[kind="header"] {
+          display: none !important;
+        }
+        button[title="Toggle sidebar"] {
+          display: none !important;
+        }
+        button[aria-label="Toggle sidebar"] {
+          display: none !important;
         }
         </style>
         """
@@ -99,6 +165,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# 背景適用
 st.markdown(
     f"""
     <style>
@@ -108,6 +175,9 @@ st.markdown(
         background-position: center;
         background-repeat: no-repeat;
         background-attachment: fixed;
+    }}
+    [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
+        background: transparent !important;
     }}
     </style>
     """,
@@ -155,9 +225,9 @@ def build_twitter_share(names: list[str]) -> str:
     )
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
-# ===== R2共通：S3クライアント =====
+# ===== csv（指標）=====
 @st.cache_data(ttl=3600)
-def _get_s3():
+def load_features_df() -> pd.DataFrame:
     required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
     missing = [k for k in required if k not in st.secrets]
     if missing:
@@ -169,39 +239,98 @@ def _get_s3():
         aws_access_key_id=st.secrets["r2_access_key_id"],
         aws_secret_access_key=st.secrets["r2_secret_access_key"],
     )
-    return s3
 
-# ===== R2：details（説明）=====
-@st.cache_data(ttl=3600)
-def load_details_df() -> pd.DataFrame:
-    s3 = _get_s3()
-    key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
-    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
-    df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
-    if "Item_ID" in df.columns:
-        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
-    return df
-
-# ===== R2：features（指標）=====
-@st.cache_data(ttl=3600)
-def load_features_df() -> pd.DataFrame:
-    s3 = _get_s3()
+    # features.csv のキー（secretsの r2_key を優先）
     key = st.secrets.get("r2_key") or "citrus_features.csv"
     obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
+
     df = pd.read_csv(BytesIO(obj["Body"].read()))
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
     return df
 
-details_df = load_details_df()
+# ===== レーダーチャート画像生成 =====
+
+@st.cache_data(show_spinner=False)
+def radar_png_data_url(
+    brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
+    title: str = ""
+) -> str:
+    labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
+    values = [brix, acid, bitter, smell, moisture, elastic]
+
+    # レーダー用に閉じる
+    values = values + [values[0]]
+    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+    angles = angles + [angles[0]]
+
+    fig = plt.figure(figsize=(3.2, 2.6), dpi=160)
+    ax = plt.subplot(111, polar=True)
+
+    ax.plot(angles, values, linewidth=2)
+    ax.fill(angles, values, alpha=0.20)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels, fontsize=9)
+
+    ax.set_ylim(1, 6)
+    ax.set_yticks([1, 2, 3, 4, 5, 6])
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=8)
+
+    if title:
+        ax.set_title(title, fontsize=10, pad=10)
+
+    fig.tight_layout()
+
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
+    plt.close(fig)
+
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{b64}"
+
+# ===== Excel（説明と画像）=====
+@st.cache_data(ttl=3600)
+def load_details_df() -> pd.DataFrame:
+    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        raise RuntimeError(
+            f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。"
+        )
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
+        aws_access_key_id=st.secrets["r2_access_key_id"],
+        aws_secret_access_key=st.secrets["r2_secret_access_key"],
+    )
+
+    # ★Excel用キー（無ければ固定名で読む）
+    key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
+
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
+
+    df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
+
+    # 期待列の正規化（念のため）
+    if "Item_ID" in df.columns:
+        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
+
+    return df
+
 features_df = load_features_df()
+details_df = load_details_df()
 
 # ===== データ取得 =====
 TOPK = 3
 top_ids = st.session_state.get("top_ids")
-
 if not top_ids:
     st.error("診断結果が見つからないため，トップページからやり直してほしい．")
+    with st.sidebar:
+        if st.button("← トップへ戻る", use_container_width=True):
+            st.session_state["route"] = "top_login" if st.session_state.get("user_logged_in") else "top"
+            st.rerun()
     st.stop()
 
 top_ids_int = []
@@ -214,6 +343,7 @@ for x in top_ids:
 df_sel = details_df[details_df["Item_ID"].isin(top_ids_int)].copy()
 df_sel["__order"] = pd.Categorical(df_sel["Item_ID"], categories=top_ids_int, ordered=True)
 df_sel = df_sel.sort_values("__order").reset_index(drop=True)
+
 top_items = df_sel.head(TOPK)
 
 # ===== UI =====
@@ -223,215 +353,80 @@ cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
-# ==============================================================
-# ★カード内に全部入れるため：カード1枚=1 iframe(components.html)で完結
-# ==============================================================
-def build_radar_div(item_id: int) -> str:
-    frow = features_df.loc[features_df["Item_ID"] == item_id].iloc[0]
+def render_card(i, row):
+    name = pick(row, "Item_name", "name", default="不明")
+    desc = pick(row, "Description", "description", default="")
+    item_id = pick(row, "Item_ID", default=None)
 
-    labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
-    values = [
-        int(frow["brix"]),
-        int(frow["acid"]),
-        int(frow["bitter"]),
-        int(frow["smell"]),
-        int(frow["moisture"]),
-        int(frow["elastic"]),
-    ]
+    image_url = NO_IMAGE_URL
+    real_url = build_citrus_image_url_from_id(item_id)
+    if real_url:
+        image_url = real_url
 
-    r = values + [values[0]]
-    theta = labels + [labels[0]]
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(r=r, theta=theta, fill="toself"))
-    fig.update_layout(
-        height=250,
-        margin=dict(l=10, r=10, t=30, b=10),
-        showlegend=False,
-        title=dict(text="この品種の特徴", x=0.5, font=dict(size=12)),
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[1, 6],
-                tickvals=[1, 2, 3, 4, 5, 6],
-            )
-        ),
-    )
-
-    # ★重要：components.htmlはカードごとにiframeなので毎回PlotlyJSが必要
-    return pio.to_html(
-        fig,
-        full_html=False,
-        include_plotlyjs="cdn",
-        config={"displayModeBar": False, "responsive": True},
-    )
-
-def build_card_html(rank: int, name: str, desc: str, image_url: str, radar_div: str) -> str:
-    # descに改行がある場合を念のためHTML化
-    desc_html = (desc or "").replace("\n", "<br/>")
-
-    return f"""
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<style>
-  body {{
-    margin: 0;
-    background: transparent;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-                 Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  }}
-  .card {{
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
-    border: 1px solid #eee;
-  }}
-  h2 {{
-    margin: 0 0 12px 0;
-    font-size: 34px;
-    font-weight: 900;
-    color: #000;
-  }}
-  .row {{ display:flex; gap:20px; align-items:flex-start; }}
-  .left {{ flex:1; }}
-  .right {{ flex:1; text-align:center; }}
-
-  .img {{
-    width:100%;
-    border-radius:8px;
-    margin-bottom:10px;
-    display:block;
-    background:#f5f5f5;
-  }}
-
-  .desc {{
-    font-size:14px;
-    color:#333;
-    line-height:1.6;
-  }}
-
-  .link-btn {{
-    display:inline-block;
-    padding:8px 14px;
-    margin:6px 0;
-    border-radius:6px;
-    color:#fff;
-    text-decoration:none;
-    font-weight:600;
-    font-size:14px;
-    opacity:0.6;
-    cursor:not-allowed;
-    pointer-events:none;
-  }}
-
-  .amazon-btn {{ background:#00BFFF; }}
-  .rakuten-btn {{ background:#BF0000; }}
-  .satofuru-btn {{ background:#D2691E; }}
-
-  .note {{
-    font-size:13px;
-    color:#666;
-    margin-top:10px;
-    line-height:1.5;
-  }}
-
-  .radar-wrap {{
-    margin-top:10px;
-  }}
-</style>
-</head>
-<body>
-  <div class="card">
-    <h2>{rank}. {name}</h2>
-
-    <div class="row">
-      <div class="left">
-        <img class="img" src="{image_url}" />
-        <div class="desc">{desc_html}</div>
-      </div>
-
-      <div class="right">
-        <a class="link-btn amazon-btn" href="javascript:void(0)">Amazonで生果を探す</a><br/>
-        <a class="link-btn rakuten-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br/>
-        <a class="link-btn satofuru-btn" href="javascript:void(0)">ふるさと納税で探す</a>
-
-        <div class="note">
-          <b>ログインするとできること</b><br/>
-          ・気になった柑橘を <b>購入ページまで進める</b><br/>
-          ・入力を変えて <b>何度でも試せる</b>
+    radar_html = ""
+    try:
+        iid = int(item_id)
+        frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
+        radar_url = radar_png_data_url(
+            brix=int(frow["brix"]),
+            acid=int(frow["acid"]),
+            bitter=int(frow["bitter"]),
+            smell=int(frow["smell"]),
+            moisture=int(frow["moisture"]),
+            elastic=int(frow["elastic"]),
+            title="この品種の特徴",
+        )
+        radar_html = f"""
+        <div style="margin-top:10px;">
+          <img src="{radar_url}" style="max-width:100%; border-radius:8px;">
         </div>
+        """
+    except Exception:
+        radar_html = ""
 
-        <div class="radar-wrap">
-          {radar_div}
-        </div>
-      </div>
+    html_raw = f"""
+<div class="card">
+  <h2>{i}. {name}</h2>
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="flex:1;">
+      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+      <p style="font-size:14px;color:#333;">{desc}</p>
+    </div>
+
+    <div style="flex:1;text-align:center;">
+      <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
+      <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
+      <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
+
+      <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+        <b>ログインするとできること</b><br>
+        ・気になった柑橘を <b>購入ページまで進める</b><br>
+        ・入力を変えて <b>何度でも試せる</b>
+      </p>
+
+      {radar_html}
     </div>
   </div>
-</body>
-</html>
+</div>
 """
 
-# ===== 1〜3位のカード出力（白カード内に全部）=====
-for rank, r in enumerate(top_items.itertuples(), start=1):
-    with quadrants[rank - 1]:
-        item_id = int(pick(r, "Item_ID", default=0) or 0)
-        name = pick(r, "Item_name", "name", default="不明")
-        desc = pick(r, "Description", "description", default="")
-        image_url = build_citrus_image_url_from_id(item_id) or NO_IMAGE_URL
+    html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
 
-        try:
-            radar_div = build_radar_div(item_id)
-        except Exception:
-            radar_div = "<div style='color:#999;font-size:12px;'>レーダーを生成できませんでした</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
-        html = build_card_html(rank, name, desc, image_url, radar_div)
+for i, r in enumerate(top_items.itertuples(), start=1):
+    with quadrants[i - 1]:
+        render_card(i, r)
 
-        # 説明文が長いと切れるので少し余裕を持たせる
-        components.html(html, height=720, scrolling=False)
-
-# ===== まとめ枠（Streamlit側カード）=====
 with quadrants[3]:
     names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
 
     st.markdown(
-        """
-        <style>
-        .card2 {
-          background-color: #ffffff;
-          border-radius: 12px;
-          padding: 20px;
-          margin-bottom: 20px;
-          box-shadow: 0 4px 12px rgba(0,0,0,.12);
-          border: 1px solid #eee;
-          text-align:center;
-        }
-        .x-btn {
-          display:inline-block;
-          padding:8px 14px;
-          margin:6px 0;
-          border-radius:6px;
-          background-color:#ffffff;
-          color:#000 !important;
-          border:1px solid #ddd;
-          text-decoration:none;
-          font-weight:600;
-          font-size:14px;
-        }
-        .x-btn:hover { background-color:#f5f5f5; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
         f"""
-        <div class="card2">
+        <div class="card" style="text-align:center;">
           <h3>まとめ</h3>
-          <a class="x-btn" href="{twitter_url}" target="_blank">Xでシェア</a>
+          <a class="link-btn x-btn" href="{twitter_url}" target="_blank">Xでシェア</a>
         </div>
         """,
         unsafe_allow_html=True,
