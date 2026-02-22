@@ -31,16 +31,49 @@ def local_image_to_data_url(path: str) -> str:
 # ==============================================================
 IMG_PATH = Path(__file__).resolve().parent.parent / "other_images/top_background.png"
 bg_url = local_image_to_data_url(str(IMG_PATH))
-
+# ==============================================================
+# CSS（サイドバー・ヘッダ・ツールバー完全非表示 + 背景適用）
+# ==============================================================
 st.markdown(
     f"""
     <style>
+    html, body, #root, [data-testid="stAppViewContainer"] {{
+        background-color: transparent !important;
+    }}
     [data-testid="stAppViewContainer"] {{
         background-image: url("{bg_url}");
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
         background-attachment: fixed;
+    }}
+    header[data-testid="stHeader"] {{
+        display: none !important;
+    }}
+    [data-testid="stToolbar"] {{
+        display: none !important;
+        height: 0 !important;
+    }}
+    [data-testid="stDecoration"] {{
+        display: none !important;
+    }}
+    section[data-testid="stSidebar"] {{
+        display: none !important;
+    }}
+    div[data-testid="stSidebar"] {{
+        display: none !important;
+    }}
+    [data-testid="collapsedControl"] {{
+        display: none !important;
+    }}
+    button[kind="header"] {{
+        display: none !important;
+    }}
+    button[title="Toggle sidebar"] {{
+        display: none !important;
+    }}
+    button[aria-label="Toggle sidebar"] {{
+        display: none !important;
     }}
     [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
         background: transparent !important;
