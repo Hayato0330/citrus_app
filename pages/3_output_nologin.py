@@ -1,14 +1,16 @@
 # pages/3_output_nologin.py
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
 from urllib.parse import quote
 import boto3
 import textwrap
 import base64
 from pathlib import Path
 from io import BytesIO
+
+# ★追加：Plotly（HTML埋め込み用）
+import plotly.graph_objects as go
+import plotly.io as pio
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -52,13 +54,11 @@ def image_file_to_data_url(path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 def build_citrus_image_url_from_id(item_id) -> str:
-    # app直下/citrus_images/citrus_{ID}.JPG を探す
     root = Path(__file__).resolve().parent.parent
     try:
         iid = int(item_id)
     except Exception:
         return ""
-
     candidates = [
         root / "citrus_images" / f"citrus_{iid}.JPG",
         root / "citrus_images" / f"citrus_{iid}.jpg",
@@ -71,7 +71,6 @@ def build_citrus_image_url_from_id(item_id) -> str:
             return image_file_to_data_url(str(p))
     return ""
 
-# ===== no-image（デフォルト画像）=====
 NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.png"
 NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
 
@@ -92,8 +91,6 @@ st.markdown(
         }
         .card h2, .card h3 { color:#000; margin-top:0; }
 
-        .match-score { color:#f59e0b; font-weight:bold; }
-
         .link-btn {
           display:inline-block;
           padding:8px 14px;
@@ -106,7 +103,6 @@ st.markdown(
           transition:opacity .15s;
           cursor:pointer;
         }
-        .link-btn img { height:16px; vertical-align:middle; margin-right:6px; }
         .link-btn:hover { opacity:.9; }
 
         .amazon-btn { background-color:#00BFFF; }
@@ -128,44 +124,24 @@ st.markdown(
           cursor: not-allowed;
           pointer-events: none;
         }
-        header[data-testid="stHeader"] {
-          display: none !important;
-        }
-        [data-testid="stToolbar"] {
-          display: none !important;
-          height: 0 !important;
-        }
-        [data-testid="stDecoration"] {
-          display: none !important;
-        }
+
+        header[data-testid="stHeader"] { display: none !important; }
+        [data-testid="stToolbar"] { display: none !important; height: 0 !important; }
+        [data-testid="stDecoration"] { display: none !important; }
+
         html, body, #root, [data-testid="stAppViewContainer"] {
           background-color: transparent !important;
         }
-        section[data-testid="stSidebar"] {
-          display: none !important;
-        }
-        div[data-testid="stSidebar"] {
-          display: none !important;
-        }
-        [data-testid="collapsedControl"] {
-          display: none !important;
-        }
-        button[kind="header"] {
-          display: none !important;
-        }
-        button[title="Toggle sidebar"] {
-          display: none !important;
-        }
-        button[aria-label="Toggle sidebar"] {
-          display: none !important;
-        }
+
+        section[data-testid="stSidebar"], div[data-testid="stSidebar"] { display: none !important; }
+        [data-testid="collapsedControl"] { display: none !important; }
+        button[kind="header"], button[title="Toggle sidebar"], button[aria-label="Toggle sidebar"] { display: none !important; }
         </style>
         """
     ),
     unsafe_allow_html=True,
 )
 
-# 背景適用
 st.markdown(
     f"""
     <style>
@@ -210,7 +186,6 @@ def compute_taste_type() -> str:
 def build_twitter_share(names: list[str]) -> str:
     app_url = "https://citrusapp-ukx8zpjspw4svc7dmd5jnj.streamlit.app/"
     taste_type = compute_taste_type()
-
     n = names + ["—", "—", "—"]
     text_raw = (
         "🍊柑橘おすすめ診断の結果！\n\n"
@@ -225,7 +200,9 @@ def build_twitter_share(names: list[str]) -> str:
     )
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
-# ===== csv（指標）=====
+# ==============================================================
+# ★追加①：R2から citrus_features.csv を読み込む
+# ==============================================================
 @st.cache_data(ttl=3600)
 def load_features_df() -> pd.DataFrame:
     required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
@@ -240,7 +217,6 @@ def load_features_df() -> pd.DataFrame:
         aws_secret_access_key=st.secrets["r2_secret_access_key"],
     )
 
-    # features.csv のキー（secretsの r2_key を優先）
     key = st.secrets.get("r2_key") or "citrus_features.csv"
     obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
 
@@ -249,45 +225,59 @@ def load_features_df() -> pd.DataFrame:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
     return df
 
-# ===== レーダーチャート画像生成 =====
-
-@st.cache_data(show_spinner=False)
-def radar_png_data_url(
+# ==============================================================
+# ★追加②：PlotlyレーダーをHTML(div)にして返す（st.markdownに埋め込む）
+# ==============================================================
+def build_radar_div_html(
     brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
-    title: str = ""
+    include_js: bool,
+    title: str = "この品種の特徴"
 ) -> str:
     labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
     values = [brix, acid, bitter, smell, moisture, elastic]
 
-    # レーダー用に閉じる
-    values = values + [values[0]]
-    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-    angles = angles + [angles[0]]
+    # 閉じる
+    r = values + [values[0]]
+    theta = labels + [labels[0]]
 
-    fig = plt.figure(figsize=(3.2, 2.6), dpi=160)
-    ax = plt.subplot(111, polar=True)
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatterpolar(
+            r=r,
+            theta=theta,
+            fill="toself",
+            hovertemplate="%{theta}: %{r}<extra></extra>",
+        )
+    )
 
-    ax.plot(angles, values, linewidth=2)
-    ax.fill(angles, values, alpha=0.20)
+    fig.update_layout(
+        height=260,
+        margin=dict(l=10, r=10, t=30, b=10),
+        showlegend=False,
+        title=dict(text=title, x=0.5, y=0.95, xanchor="center", yanchor="top", font=dict(size=12)),
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[1, 6],
+                tickmode="array",
+                tickvals=[1, 2, 3, 4, 5, 6],
+            )
+        ),
+    )
 
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, fontsize=9)
+    div = pio.to_html(
+        fig,
+        full_html=False,
+        include_plotlyjs=("cdn" if include_js else False),  # ★JSは最初だけ
+        config={"displayModeBar": False, "responsive": True},
+    )
 
-    ax.set_ylim(1, 6)
-    ax.set_yticks([1, 2, 3, 4, 5, 6])
-    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=8)
-
-    if title:
-        ax.set_title(title, fontsize=10, pad=10)
-
-    fig.tight_layout()
-
-    buf = BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
-    plt.close(fig)
-
-    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-    return f"data:image/png;base64,{b64}"
+    # カード右側に収めるラッパ
+    return f"""
+    <div style="width:100%; max-width:420px; margin:10px auto 0 auto;">
+      {div}
+    </div>
+    """
 
 # ===== Excel（説明と画像）=====
 @st.cache_data(ttl=3600)
@@ -306,19 +296,17 @@ def load_details_df() -> pd.DataFrame:
         aws_secret_access_key=st.secrets["r2_secret_access_key"],
     )
 
-    # ★Excel用キー（無ければ固定名で読む）
     key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
-
     obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
 
     df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
-
-    # 期待列の正規化（念のため）
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
-
     return df
 
+# ==============================================================
+# ★追加③：features_df をロード
+# ==============================================================
 features_df = load_features_df()
 details_df = load_details_df()
 
@@ -343,7 +331,6 @@ for x in top_ids:
 df_sel = details_df[details_df["Item_ID"].isin(top_ids_int)].copy()
 df_sel["__order"] = pd.Categorical(df_sel["Item_ID"], categories=top_ids_int, ordered=True)
 df_sel = df_sel.sort_values("__order").reset_index(drop=True)
-
 top_items = df_sel.head(TOPK)
 
 # ===== UI =====
@@ -363,24 +350,24 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
+    # ==========================================================
+    # ★追加④：品種の指標をfeatures_dfから引いてレーダーHTMLを作る
+    #    JS読み込みは1位カードのみ（i==1）でCDNを入れる
+    # ==========================================================
     radar_html = ""
     try:
         iid = int(item_id)
         frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
-        radar_url = radar_png_data_url(
+        radar_html = build_radar_div_html(
             brix=int(frow["brix"]),
             acid=int(frow["acid"]),
             bitter=int(frow["bitter"]),
             smell=int(frow["smell"]),
             moisture=int(frow["moisture"]),
             elastic=int(frow["elastic"]),
+            include_js=(i == 1),
             title="この品種の特徴",
         )
-        radar_html = f"""
-        <div style="margin-top:10px;">
-          <img src="{radar_url}" style="max-width:100%; border-radius:8px;">
-        </div>
-        """
     except Exception:
         radar_html = ""
 
@@ -411,7 +398,6 @@ def render_card(i, row):
 """
 
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
-
     st.markdown(html, unsafe_allow_html=True)
 
 for i, r in enumerate(top_items.itertuples(), start=1):
