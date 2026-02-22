@@ -1,6 +1,8 @@
 # pages/3_output_nologin.py
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 from urllib.parse import quote
 import boto3
 import textwrap
@@ -223,6 +225,70 @@ def build_twitter_share(names: list[str]) -> str:
     )
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
+# ===== csv（指標）=====
+@st.cache_data(ttl=3600)
+def load_features_df() -> pd.DataFrame:
+    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        raise RuntimeError(f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。")
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
+        aws_access_key_id=st.secrets["r2_access_key_id"],
+        aws_secret_access_key=st.secrets["r2_secret_access_key"],
+    )
+
+    # features.csv のキー（secretsの r2_key を優先）
+    key = st.secrets.get("r2_key") or "citrus_features.csv"
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
+
+    df = pd.read_csv(BytesIO(obj["Body"].read()))
+    if "Item_ID" in df.columns:
+        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
+    return df
+
+# ===== レーダーチャート画像生成 =====
+
+@st.cache_data(show_spinner=False)
+def radar_png_data_url(
+    brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
+    title: str = ""
+) -> str:
+    labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
+    values = [brix, acid, bitter, smell, moisture, elastic]
+
+    # レーダー用に閉じる
+    values = values + [values[0]]
+    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+    angles = angles + [angles[0]]
+
+    fig = plt.figure(figsize=(3.2, 2.6), dpi=160)
+    ax = plt.subplot(111, polar=True)
+
+    ax.plot(angles, values, linewidth=2)
+    ax.fill(angles, values, alpha=0.20)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels, fontsize=9)
+
+    ax.set_ylim(1, 6)
+    ax.set_yticks([1, 2, 3, 4, 5, 6])
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=8)
+
+    if title:
+        ax.set_title(title, fontsize=10, pad=10)
+
+    fig.tight_layout()
+
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
+    plt.close(fig)
+
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{b64}"
+
 # ===== Excel（説明と画像）=====
 @st.cache_data(ttl=3600)
 def load_details_df() -> pd.DataFrame:
@@ -252,6 +318,8 @@ def load_details_df() -> pd.DataFrame:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
 
     return df
+
+features_df = load_features_df()
 details_df = load_details_df()
 
 # ===== データ取得 =====
@@ -295,6 +363,27 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
+    radar_html = ""
+    try:
+        iid = int(item_id)
+        frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
+        radar_url = radar_png_data_url(
+            brix=int(frow["brix"]),
+            acid=int(frow["acid"]),
+            bitter=int(frow["bitter"]),
+            smell=int(frow["smell"]),
+            moisture=int(frow["moisture"]),
+            elastic=int(frow["elastic"]),
+            title="この品種の特徴",
+        )
+        radar_html = f"""
+        <div style="margin-top:10px;">
+          <img src="{radar_url}" style="max-width:100%; border-radius:8px;">
+        </div>
+        """
+    except Exception:
+        radar_html = ""
+
     html_raw = f"""
 <div class="card">
   <h2>{i}. {name}</h2>
@@ -314,17 +403,17 @@ def render_card(i, row):
         ・気になった柑橘を <b>購入ページまで進める</b><br>
         ・入力を変えて <b>何度でも試せる</b>
       </p>
+
+      {radar_html}
     </div>
   </div>
 </div>
 """
 
-    # ★重要：Markdownの「4スペース=コード」判定を潰すため、各行の先頭空白を除去
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
 
     st.markdown(html, unsafe_allow_html=True)
 
-# 指定どおりのループ構造
 for i, r in enumerate(top_items.itertuples(), start=1):
     with quadrants[i - 1]:
         render_card(i, r)

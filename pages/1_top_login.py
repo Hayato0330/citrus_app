@@ -237,7 +237,6 @@ st.markdown(
         <div class="user-meta">
           <div class="name">ようこそ、{user_name} さん</div>
           <div class="sub">ログイン方法：{auth_provider.upper()}</div>
-          <div class="id">ID:{user_id} </div>
         </div>
       </div>
       <div class="badge"><span class="badge-dot"></span>ログイン中</div>
