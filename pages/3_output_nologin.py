@@ -71,7 +71,7 @@ def build_citrus_image_url_from_id(item_id) -> str:
 NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.png"
 NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
 
-# ===== CSS（nologin版：外部リンク無効＋ログイン誘導文あり）=====
+# ===== CSS =====
 st.markdown(
     textwrap.dedent(
         """
@@ -118,26 +118,43 @@ st.markdown(
         .rakuten-btn:hover { background-color:#990000; }
         .satofuru-btn:hover { background-color:#b85c19; }
         .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
+
         .disabled-btn {
           opacity: 0.6;
           cursor: not-allowed;
           pointer-events: none;
         }
         header[data-testid="stHeader"] {
-            display: none !important;
+          display: none !important;
         }
         [data-testid="stToolbar"] {
-            display: none !important;
-            height: 0 !important;
+          display: none !important;
+          height: 0 !important;
         }
         [data-testid="stDecoration"] {
-            display: none !important;
+          display: none !important;
         }
         html, body, #root, [data-testid="stAppViewContainer"] {
-            background-color: transparent !important;
+          background-color: transparent !important;
         }
-        section[data-testid="stSidebar"] { display: none !important; }
-        div[data-testid="stSidebar"] { display: none !important; }
+        section[data-testid="stSidebar"] {
+          display: none !important;
+        }
+        div[data-testid="stSidebar"] {
+          display: none !important;
+        }
+        [data-testid="collapsedControl"] {
+          display: none !important;
+        }
+        button[kind="header"] {
+          display: none !important;
+        }
+        button[title="Toggle sidebar"] {
+          display: none !important;
+        }
+        button[aria-label="Toggle sidebar"] {
+          display: none !important;
+        }
         </style>
         """
     ),

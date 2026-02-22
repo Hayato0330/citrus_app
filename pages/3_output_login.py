@@ -72,7 +72,7 @@ NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.
 NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
 
 
-# ===== CSS（login版そのまま）=====
+# ===== CSS =====
 st.markdown(
     textwrap.dedent(
         """
@@ -120,20 +120,36 @@ st.markdown(
         .satofuru-btn:hover { background-color:#b85c19; }
         .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
         header[data-testid="stHeader"] {
-            display: none !important;
+          display: none !important;
         }
         [data-testid="stToolbar"] {
-            display: none !important;
-            height: 0 !important;
+          display: none !important;
+          height: 0 !important;
         }
         [data-testid="stDecoration"] {
-            display: none !important;
-        }
+          display: none !important;
+          }
         html, body, #root, [data-testid="stAppViewContainer"] {
-            background-color: transparent !important;
+          background-color: transparent !important;
         }
-        section[data-testid="stSidebar"] { display: none !important; }
-        div[data-testid="stSidebar"] { display: none !important; }
+        section[data-testid="stSidebar"] {
+          display: none !important;
+        }
+        div[data-testid="stSidebar"] {
+          display: none !important;
+        }
+        [data-testid="collapsedControl"] {
+          display: none !important;
+        }
+        button[kind="header"] {
+          display: none !important;
+        }
+        button[title="Toggle sidebar"] {
+          display: none !important;
+        }
+        button[aria-label="Toggle sidebar"] {
+          display: none !important;
+        }
         </style>
         """
     ),
