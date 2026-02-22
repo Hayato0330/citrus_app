@@ -1,4 +1,5 @@
 # pages/3_output_nologin.py
+
 import streamlit as st
 import pandas as pd
 from urllib.parse import quote
@@ -7,9 +8,11 @@ import textwrap
 import base64
 from pathlib import Path
 from io import BytesIO
-import streamlit.components.v1 as components
+
+# ★追加：Plotly + components（カード丸ごとHTMLで描く）
 import plotly.graph_objects as go
 import plotly.io as pio
+import streamlit.components.v1 as components
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -58,6 +61,7 @@ def build_citrus_image_url_from_id(item_id) -> str:
         iid = int(item_id)
     except Exception:
         return ""
+
     candidates = [
         root / "citrus_images" / f"citrus_{iid}.JPG",
         root / "citrus_images" / f"citrus_{iid}.jpg",
@@ -73,68 +77,18 @@ def build_citrus_image_url_from_id(item_id) -> str:
 NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.png"
 NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
 
-# ===== CSS =====
+# ===== CSS（ページ全体）=====
 st.markdown(
     textwrap.dedent(
         """
         <style>
-        body { background-color: #FFF8F0; }
-
-        .card {
-          background-color: #ffffff;
-          border-radius: 12px;
-          padding: 20px;
-          margin-bottom: 20px;
-          box-shadow: 0 4px 12px rgba(0,0,0,.12);
-          border: 1px solid #eee;
-        }
-        .card h2, .card h3 { color:#000; margin-top:0; }
-
-        .link-btn {
-          display:inline-block;
-          padding:8px 14px;
-          margin:6px 0;
-          border-radius:6px;
-          color:#fff !important;
-          text-decoration:none;
-          font-weight:600;
-          font-size:14px;
-          transition:opacity .15s;
-          cursor:pointer;
-        }
-        .link-btn:hover { opacity:.9; }
-
-        .amazon-btn { background-color:#00BFFF; }
-        .rakuten-btn { background-color:#BF0000; }
-        .satofuru-btn { background-color:#D2691E; }
-        .x-btn {
-          background-color:#ffffff;
-          color:#000 !important;
-          border:1px solid #ddd;
-        }
-
-        .amazon-btn:hover { background-color:#87CEEB; }
-        .rakuten-btn:hover { background-color:#990000; }
-        .satofuru-btn:hover { background-color:#b85c19; }
-        .x-btn:hover { background-color:#f5f5f5; color:#000 !important; }
-
-        .disabled-btn {
-          opacity: 0.6;
-          cursor: not-allowed;
-          pointer-events: none;
-        }
-
         header[data-testid="stHeader"] { display: none !important; }
         [data-testid="stToolbar"] { display: none !important; height: 0 !important; }
         [data-testid="stDecoration"] { display: none !important; }
-
-        html, body, #root, [data-testid="stAppViewContainer"] {
-          background-color: transparent !important;
-        }
-
         section[data-testid="stSidebar"], div[data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
         button[kind="header"], button[title="Toggle sidebar"], button[aria-label="Toggle sidebar"] { display: none !important; }
+        html, body, #root, [data-testid="stAppViewContainer"] { background-color: transparent !important; }
         </style>
         """
     ),
@@ -150,9 +104,6 @@ st.markdown(
         background-position: center;
         background-repeat: no-repeat;
         background-attachment: fixed;
-    }}
-    [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"] {{
-        background: transparent !important;
     }}
     </style>
     """,
@@ -199,125 +150,49 @@ def build_twitter_share(names: list[str]) -> str:
     )
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
-# ==============================================================
-# ★追加①：R2から citrus_features.csv を読み込む
-# ==============================================================
+# ===== R2読み込み =====
 @st.cache_data(ttl=3600)
-def load_features_df() -> pd.DataFrame:
+def _get_s3():
     required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
     missing = [k for k in required if k not in st.secrets]
     if missing:
         raise RuntimeError(f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。")
-
     s3 = boto3.client(
         "s3",
         endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
         aws_access_key_id=st.secrets["r2_access_key_id"],
         aws_secret_access_key=st.secrets["r2_secret_access_key"],
     )
+    return s3
 
-    key = st.secrets.get("r2_key") or "citrus_features.csv"
-    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
-
-    df = pd.read_csv(BytesIO(obj["Body"].read()))
-    if "Item_ID" in df.columns:
-        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
-    return df
-
-# ==============================================================
-# ★追加②：PlotlyレーダーをHTML(div)にして返す（st.markdownに埋め込む）
-# ==============================================================
-def build_radar_div_html(
-    brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
-    include_js: bool,
-    title: str = "この品種の特徴"
-) -> str:
-    labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
-    values = [brix, acid, bitter, smell, moisture, elastic]
-
-    # 閉じる
-    r = values + [values[0]]
-    theta = labels + [labels[0]]
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatterpolar(
-            r=r,
-            theta=theta,
-            fill="toself",
-            hovertemplate="%{theta}: %{r}<extra></extra>",
-        )
-    )
-
-    fig.update_layout(
-        height=260,
-        margin=dict(l=10, r=10, t=30, b=10),
-        showlegend=False,
-        title=dict(text=title, x=0.5, y=0.95, xanchor="center", yanchor="top", font=dict(size=12)),
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[1, 6],
-                tickmode="array",
-                tickvals=[1, 2, 3, 4, 5, 6],
-            )
-        ),
-    )
-
-    div = pio.to_html(
-        fig,
-        full_html=False,
-        include_plotlyjs=("cdn" if include_js else False),  # ★JSは最初だけ
-        config={"displayModeBar": False, "responsive": True},
-    )
-
-    # カード右側に収めるラッパ
-    return f"""
-    <div style="width:100%; max-width:420px; margin:10px auto 0 auto;">
-      {div}
-    </div>
-    """
-
-# ===== Excel（説明と画像）=====
 @st.cache_data(ttl=3600)
 def load_details_df() -> pd.DataFrame:
-    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
-    missing = [k for k in required if k not in st.secrets]
-    if missing:
-        raise RuntimeError(
-            f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。"
-        )
-
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
-        aws_access_key_id=st.secrets["r2_access_key_id"],
-        aws_secret_access_key=st.secrets["r2_secret_access_key"],
-    )
-
+    s3 = _get_s3()
     key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
     obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
-
     df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
     return df
 
-# ==============================================================
-# ★追加③：features_df をロード
-# ==============================================================
-features_df = load_features_df()
+@st.cache_data(ttl=3600)
+def load_features_df() -> pd.DataFrame:
+    s3 = _get_s3()
+    key = st.secrets.get("r2_key") or "citrus_features.csv"
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
+    df = pd.read_csv(BytesIO(obj["Body"].read()))
+    if "Item_ID" in df.columns:
+        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
+    return df
+
 details_df = load_details_df()
+features_df = load_features_df()
 
 # ===== データ取得 =====
 TOPK = 3
 top_ids = st.session_state.get("top_ids")
 if not top_ids:
     st.error("診断結果が見つからないため，トップページからやり直してほしい．")
-    with st.sidebar:
-        if st.button("← トップへ戻る", use_container_width=True):
-            st.session_state["route"] = "top_login" if st.session_state.get("user_logged_in") else "top"
-            st.rerun()
     st.stop()
 
 top_ids_int = []
@@ -339,74 +214,171 @@ cols_top = st.columns(2)
 cols_bottom = st.columns(2)
 quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
 
-def render_card(i, row):
-    name = pick(row, "Item_name", "name", default="不明")
-    desc = pick(row, "Description", "description", default="")
-    item_id = pick(row, "Item_ID", default=None)
+# ==============================================================
+# ★ここが重要：カード1枚ぶんのHTMLを「丸ごと」作る関数
+#  -> 白カードの中に、画像/説明/ボタン/メリット/レーダーを全部入れる
+#  -> components.html で描くのでJSが確実に動く
+# ==============================================================
+def build_card_html(name: str, desc: str, image_url: str, radar_div: str) -> str:
+    # カード内専用CSS（iframe内なのでここで定義し直す）
+    return f"""
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  body {{
+    margin: 0;
+    background: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  }}
+  .card {{
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+    border: 1px solid #eee;
+  }}
+  h2 {{
+    margin: 0 0 12px 0;
+    font-size: 34px;
+    font-weight: 900;
+  }}
+  .row {{
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }}
+  .left {{
+    flex: 1;
+  }}
+  .right {{
+    flex: 1;
+    text-align: center;
+  }}
+  .img {{
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: block;
+  }}
+  .desc {{
+    font-size: 14px;
+    color: #333;
+    line-height: 1.6;
+  }}
+  .link-btn {{
+    display:inline-block;
+    padding:8px 14px;
+    margin:6px 0;
+    border-radius:6px;
+    color:#fff;
+    text-decoration:none;
+    font-weight:600;
+    font-size:14px;
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }}
+  .amazon-btn {{ background:#00BFFF; }}
+  .rakuten-btn {{ background:#BF0000; }}
+  .satofuru-btn {{ background:#D2691E; }}
+  .note {{
+    font-size:13px;
+    color:#666;
+    margin-top:10px;
+    line-height:1.5;
+  }}
+  .radar-wrap {{
+    margin-top: 10px;
+  }}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2>{name}</h2>
 
-    image_url = NO_IMAGE_URL
-    real_url = build_citrus_image_url_from_id(item_id)
-    if real_url:
-        image_url = real_url
-    st.markdown(f'<div class="card"><h2>{i}. {name}</h2>', unsafe_allow_html=True)
-    left, right = st.columns(2, gap="large")
+    <div class="row">
+      <div class="left">
+        <img class="img" src="{image_url}" />
+        <div class="desc">{desc}</div>
+      </div>
 
-    with left:
-        st.markdown(
-            f"""
-            <div>
-              <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-              <p style="font-size:14px;color:#333;">{desc}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+      <div class="right">
+        <a class="link-btn amazon-btn" href="javascript:void(0)">Amazonで生果を探す</a><br/>
+        <a class="link-btn rakuten-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br/>
+        <a class="link-btn satofuru-btn" href="javascript:void(0)">ふるさと納税で探す</a>
 
-    with right:
-        # 右側のボタン群は従来通りHTML
-        st.markdown(
-            """
-            <div style="text-align:center;">
-              <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
-              <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
-              <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
+        <div class="note">
+          <b>ログインするとできること</b><br/>
+          ・気になった柑橘を <b>購入ページまで進める</b><br/>
+          ・入力を変えて <b>何度でも試せる</b>
+        </div>
 
-              <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
-                <b>ログインするとできること</b><br>
-                ・気になった柑橘を <b>購入ページまで進める</b><br>
-                ・入力を変えて <b>何度でも試せる</b>
-              </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        <div class="radar-wrap">
+          {radar_div}
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+def build_radar_div(i: int, item_id: int) -> str:
+    frow = features_df.loc[features_df["Item_ID"] == item_id].iloc[0]
+    labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
+    values = [
+        int(frow["brix"]),
+        int(frow["acid"]),
+        int(frow["bitter"]),
+        int(frow["smell"]),
+        int(frow["moisture"]),
+        int(frow["elastic"]),
+    ]
+    r = values + [values[0]]
+    theta = labels + [labels[0]]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(r=r, theta=theta, fill="toself"))
+    fig.update_layout(
+        height=260,
+        margin=dict(l=10, r=10, t=30, b=10),
+        showlegend=False,
+        title=dict(text="この品種の特徴", x=0.5, font=dict(size=12)),
+        polar=dict(radialaxis=dict(visible=True, range=[1, 6], tickvals=[1,2,3,4,5,6])),
+    )
+
+    # ★超重要：components.html はカードごとにiframeなので、毎回JSが必要
+    radar_div = pio.to_html(
+        fig,
+        full_html=False,
+        include_plotlyjs="cdn",   # ← ここは毎回cdnにする（1回だけはNG）
+        config={"displayModeBar": False, "responsive": True},
+    )
+
+    return radar_div
+
+# 3カードを表示
+for rank, r in enumerate(top_items.itertuples(), start=1):
+    with quadrants[rank - 1]:
+        item_id = int(pick(r, "Item_ID", default=0) or 0)
+        name = pick(r, "Item_name", "name", default="不明")
+        desc = pick(r, "Description", "description", default="")
+        img = build_citrus_image_url_from_id(item_id) or NO_IMAGE_URL
 
         try:
-            iid = int(item_id)
-            frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
-
-            radar_div = build_radar_div_html(
-                brix=int(frow["brix"]),
-                acid=int(frow["acid"]),
-                bitter=int(frow["bitter"]),
-                smell=int(frow["smell"]),
-                moisture=int(frow["moisture"]),
-                elastic=int(frow["elastic"]),
-                include_js=(i == 1),  # ★JS(CDN)は最初の1回だけ
-                title="この品種の特徴",
-            )
-
-            # height は少し余裕を持たせる
-            components.html(radar_div, height=300, scrolling=False)
-
+            radar_div = build_radar_div(rank, item_id)
         except Exception:
-            pass
-    st.markdown("</div>", unsafe_allow_html=True)
+            radar_div = "<div style='color:#999;font-size:12px;'>レーダーを生成できませんでした</div>"
 
-for i, r in enumerate(top_items.itertuples(), start=1):
-    with quadrants[i - 1]:
-        render_card(i, r)
+        # ★ここが出力本体：白カードごとcomponentsで描く
+        html = build_card_html(f"{rank}. {name}", desc, img, radar_div)
 
+        # 高さは説明文の長さで多少変わるので少し余裕を持たせる
+        components.html(html, height=720, scrolling=False)
+
+# まとめ枠は従来どおり
 with quadrants[3]:
     names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
