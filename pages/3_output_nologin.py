@@ -7,8 +7,7 @@ import textwrap
 import base64
 from pathlib import Path
 from io import BytesIO
-
-# ★追加：Plotly（HTML埋め込み用）
+import streamlit.components.v1 as components
 import plotly.graph_objects as go
 import plotly.io as pio
 
@@ -349,56 +348,60 @@ def render_card(i, row):
     real_url = build_citrus_image_url_from_id(item_id)
     if real_url:
         image_url = real_url
+    st.markdown(f'<div class="card"><h2>{i}. {name}</h2>', unsafe_allow_html=True)
+    left, right = st.columns(2, gap="large")
 
-    # ==========================================================
-    # ★追加④：品種の指標をfeatures_dfから引いてレーダーHTMLを作る
-    #    JS読み込みは1位カードのみ（i==1）でCDNを入れる
-    # ==========================================================
-    radar_html = ""
-    try:
-        iid = int(item_id)
-        frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
-        radar_html = build_radar_div_html(
-            brix=int(frow["brix"]),
-            acid=int(frow["acid"]),
-            bitter=int(frow["bitter"]),
-            smell=int(frow["smell"]),
-            moisture=int(frow["moisture"]),
-            elastic=int(frow["elastic"]),
-            include_js=(i == 1),
-            title="この品種の特徴",
+    with left:
+        st.markdown(
+            f"""
+            <div>
+              <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+              <p style="font-size:14px;color:#333;">{desc}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-    except Exception:
-        radar_html = ""
 
-    html_raw = f"""
-<div class="card">
-  <h2>{i}. {name}</h2>
-  <div style="display:flex;gap:20px;align-items:flex-start;">
-    <div style="flex:1;">
-      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-      <p style="font-size:14px;color:#333;">{desc}</p>
-    </div>
+    with right:
+        # 右側のボタン群は従来通りHTML
+        st.markdown(
+            """
+            <div style="text-align:center;">
+              <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
+              <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
+              <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
 
-    <div style="flex:1;text-align:center;">
-      <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
-      <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
-      <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
+              <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+                <b>ログインするとできること</b><br>
+                ・気になった柑橘を <b>購入ページまで進める</b><br>
+                ・入力を変えて <b>何度でも試せる</b>
+              </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-      <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
-        <b>ログインするとできること</b><br>
-        ・気になった柑橘を <b>購入ページまで進める</b><br>
-        ・入力を変えて <b>何度でも試せる</b>
-      </p>
+        try:
+            iid = int(item_id)
+            frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
 
-      {radar_html}
-    </div>
-  </div>
-</div>
-"""
+            radar_div = build_radar_div_html(
+                brix=int(frow["brix"]),
+                acid=int(frow["acid"]),
+                bitter=int(frow["bitter"]),
+                smell=int(frow["smell"]),
+                moisture=int(frow["moisture"]),
+                elastic=int(frow["elastic"]),
+                include_js=(i == 1),  # ★JS(CDN)は最初の1回だけ
+                title="この品種の特徴",
+            )
 
-    html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
-    st.markdown(html, unsafe_allow_html=True)
+            # height は少し余裕を持たせる
+            components.html(radar_div, height=300, scrolling=False)
+
+        except Exception:
+            pass
+    st.markdown("</div>", unsafe_allow_html=True)
 
 for i, r in enumerate(top_items.itertuples(), start=1):
     with quadrants[i - 1]:
