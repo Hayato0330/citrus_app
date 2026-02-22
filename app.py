@@ -114,7 +114,7 @@ elif route == "input":
 
 # ===== login ページ =====
 elif route == "login":
-    runpy.run_path("pages/3_login.py")
+    runpy.run_path("pages/3_Login.py")
 
 # ===== 結果表示ページ =====
 ## ログイン有
