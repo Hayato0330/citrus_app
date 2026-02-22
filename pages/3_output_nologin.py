@@ -244,37 +244,32 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
-    html = textwrap.dedent(f"""
-    <div class="card">
-      <h2>{i}. {name}</h2>
-      <div style="display:flex;gap:20px;align-items:flex-start;">
-        <div style="flex:1;">
-          <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-          <p style="font-size:14px;color:#333;">{desc}</p>
-        </div>
-
-        <div style="flex:1;text-align:center;">
-            <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">
-                Amazonで生果を探す
-            </a><br>
-
-            <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">
-                楽天で贈答/家庭用を探す
-            </a><br>
-
-            <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">
-                ふるさと納税で探す
-            </a>
-
-            <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
-              <b>ログインするとできること</b><br>
-              ・気になった柑橘を <b>購入ページまで進める</b><br>
-              ・入力を変えて <b>何度でも試せる</b>
-            </p>
-        </div>
-      </div>
+    html_raw = f"""
+<div class="card">
+  <h2>{i}. {name}</h2>
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="flex:1;">
+      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+      <p style="font-size:14px;color:#333;">{desc}</p>
     </div>
-    """).strip()
+
+    <div style="flex:1;text-align:center;">
+      <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
+      <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
+      <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
+
+      <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+        <b>ログインするとできること</b><br>
+        ・気になった柑橘を <b>購入ページまで進める</b><br>
+        ・入力を変えて <b>何度でも試せる</b>
+      </p>
+    </div>
+  </div>
+</div>
+"""
+
+    # ★重要：Markdownの「4スペース=コード」判定を潰すため、各行の先頭空白を除去
+    html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
 
     st.markdown(html, unsafe_allow_html=True)
 
