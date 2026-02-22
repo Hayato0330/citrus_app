@@ -2,9 +2,11 @@
 import streamlit as st
 import pandas as pd
 from urllib.parse import quote
+import boto3
 import textwrap
 import base64
 from pathlib import Path
+from io import BytesIO
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -222,15 +224,34 @@ def build_twitter_share(names: list[str]) -> str:
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
 # ===== Excel（説明と画像）=====
-@st.cache_data
+@st.cache_data(ttl=3600)
 def load_details_df() -> pd.DataFrame:
-    path = Path(__file__).resolve().parent.parent / "citrus_details_list.xlsx"
-    df = pd.read_excel(path, sheet_name="description_image")
+    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        raise RuntimeError(
+            f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。"
+        )
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
+        aws_access_key_id=st.secrets["r2_access_key_id"],
+        aws_secret_access_key=st.secrets["r2_secret_access_key"],
+    )
+
+    # ★Excel用キー（無ければ固定名で読む）
+    key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
+
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
+
+    df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
+
     # 期待列の正規化（念のため）
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
-    return df
 
+    return df
 details_df = load_details_df()
 
 # ===== データ取得 =====
