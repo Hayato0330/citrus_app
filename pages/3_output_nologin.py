@@ -289,7 +289,7 @@ def radar_png_data_url(
     b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
     return f"data:image/png;base64,{b64}"
 
-# ===== Excel（説明と画像）=====
+# ===== 説明と画像=====
 @st.cache_data(ttl=3600)
 def load_details_df() -> pd.DataFrame:
     required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
@@ -306,7 +306,6 @@ def load_details_df() -> pd.DataFrame:
         aws_secret_access_key=st.secrets["r2_secret_access_key"],
     )
 
-    # ★Excel用キー（無ければ固定名で読む）
     key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
 
     obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
