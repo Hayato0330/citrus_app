@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import japanize_matplotlib
 import numpy as np
 from urllib.parse import quote
 import boto3
@@ -259,7 +260,7 @@ def radar_png_data_url(
     labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
     values = [brix, acid, bitter, smell, moisture, elastic]
 
-    # レーダー用に閉じる
+    japanize_matplotlib.japanize()
     values = values + [values[0]]
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles = angles + [angles[0]]
