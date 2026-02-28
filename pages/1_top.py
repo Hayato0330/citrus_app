@@ -124,7 +124,7 @@ if bg_url:
 st.markdown("""
 <div class="hero">
   <h1>柑橘類の推薦システム</h1>
-  <p>あなたにぴったりの品種を紹介します</p>
+  <h3>あなたにぴったりの品種を紹介します</h3>
 </div>
 """, unsafe_allow_html=True)
 
