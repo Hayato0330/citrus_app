@@ -10,7 +10,25 @@ import textwrap
 import base64
 from pathlib import Path
 from io import BytesIO
+from matplotlib import font_manager, rcParams
 
+@st.cache_resource
+def ensure_japanese_font():
+    root = Path(__file__).resolve().parent.parent
+    font_path = root / "fonts" / "NotoSansJP-Regular.ttf"
+    if not font_path.exists():
+        # フォントが無いなら何もしない（この場合は豆腐になる）
+        return None
+
+    font_manager.fontManager.addfont(str(font_path))
+    fp = font_manager.FontProperties(fname=str(font_path))
+    font_name = fp.get_name()
+
+    # Matplotlib全体のデフォルトフォントを日本語に寄せる
+    rcParams["font.family"] = font_name
+    rcParams["axes.unicode_minus"] = False  # ついでに "−" 化け対策
+
+    return font_name
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
@@ -257,10 +275,13 @@ def radar_png_data_url(
     brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
     title: str = ""
 ) -> str:
+    font_name = ensure_japanese_font()
+    if font_name is None:
+        st.warning("日本語フォントが見つからない: fonts/NotoSansJP-Regular.ttf をリポジトリに追加してデプロイ")
+    else:
+        st.caption(f"日本語フォント適用: {font_name}")
     labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
     values = [brix, acid, bitter, smell, moisture, elastic]
-
-    japanize_matplotlib.japanize()
     values = values + [values[0]]
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles = angles + [angles[0]]
