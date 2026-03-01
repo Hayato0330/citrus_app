@@ -286,7 +286,7 @@ def load_details_df() -> pd.DataFrame:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
     return df
 
-# ===== レーダーチャート（nologinと同じ柑橘UI）=====
+# ===== レーダーチャート=====
 @st.cache_data(show_spinner=False)
 def radar_png_data_url(
     brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
