@@ -12,22 +12,15 @@ from io import BytesIO
 from matplotlib import font_manager, rcParams
 
 @st.cache_resource
-def ensure_japanese_font():
+def get_jp_fontprop():
     root = Path(__file__).resolve().parent.parent
     font_path = root / "fonts" / "NotoSansJP-Regular.ttf"
     if not font_path.exists():
-        # フォントが無いなら何もしない（この場合は豆腐になる）
         return None
 
+    # Matplotlib にフォント登録
     font_manager.fontManager.addfont(str(font_path))
-    fp = font_manager.FontProperties(fname=str(font_path))
-    font_name = fp.get_name()
-
-    # Matplotlib全体のデフォルトフォントを日本語に寄せる
-    rcParams["font.family"] = font_name
-    rcParams["axes.unicode_minus"] = False  # ついでに "−" 化け対策
-
-    return font_name
+    return font_manager.FontProperties(fname=str(font_path))
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
@@ -274,39 +267,48 @@ def radar_png_data_url(
     brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
     title: str = ""
 ) -> str:
-    font_name = ensure_japanese_font()
-    if font_name is None:
-        st.warning("日本語フォントが見つからない: fonts/NotoSansJP-Regular.ttf をリポジトリに追加してデプロイ")
-    else:
-        st.caption(f"日本語フォント適用: {font_name}")
+    fp = get_jp_fontprop()
+
     labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
     values = [brix, acid, bitter, smell, moisture, elastic]
     values = values + [values[0]]
+
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles = angles + [angles[0]]
 
-    fig = plt.figure(figsize=(3.2, 2.6), dpi=160)
+    fig = plt.figure(figsize=(3.2, 2.6), dpi=180)
     ax = plt.subplot(111, polar=True)
 
-    ax.plot(angles, values, linewidth=2)
-    ax.fill(angles, values, alpha=0.20)
+    # --- 柑橘っぽい配色 ---
+    line_color = "#F59E0B"
+    fill_color = "#FDBA74"
+    grid_color = "#E7D7C5"
+    text_color = "#4B3B2B"
+    ax.set_facecolor("#FFF7ED")  # 背景色
 
+    # グリッドと外枠
+    ax.grid(color=grid_color, linewidth=1.0, alpha=0.9)
+    ax.spines["polar"].set_color("#E8B26A")
+    ax.spines["polar"].set_linewidth(1.4)
+    # 線・塗り
+    ax.plot(angles, values, linewidth=2.6, color=line_color)
+    ax.fill(angles, values, color=fill_color, alpha=0.35)
+    # ラベル
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, fontsize=9)
-
+    ax.set_xticklabels(labels, fontsize=9, color=text_color, fontproperties=fp)
+    # スケール
     ax.set_ylim(1, 6)
     ax.set_yticks([1, 2, 3, 4, 5, 6])
-    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=8)
-
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=8, color=text_color)
+    # 目盛りラベル位置
+    ax.set_rlabel_position(22)
+    # タイトル（控えめ）
     if title:
-        ax.set_title(title, fontsize=10, pad=10)
-
-    fig.tight_layout()
-
+        ax.set_title(title, fontsize=10, pad=10, color=text_color, fontproperties=fp)
+    fig.tight_layout(pad=0.6)
     buf = BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
     plt.close(fig)
-
     b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
     return f"data:image/png;base64,{b64}"
 
@@ -333,7 +335,7 @@ def load_details_df() -> pd.DataFrame:
 
     df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
 
-    # 期待列の正規化（念のため）
+    # 期待列の正規化
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
 
