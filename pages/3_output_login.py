@@ -1,15 +1,29 @@
 # pages/3_output_login.py
 import streamlit as st
 import pandas as pd
-import boto3
+import matplotlib.pyplot as plt
+import numpy as np
 from urllib.parse import quote
+import boto3
 import textwrap
 import base64
 from pathlib import Path
 from io import BytesIO
+from matplotlib import font_manager
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
+
+# ===== 日本語フォント（同梱TTF）=====
+@st.cache_resource
+def get_jp_fontprop():
+    root = Path(__file__).resolve().parent.parent
+    font_path = root / "fonts" / "NotoSansJP-Regular.ttf"
+    if not font_path.exists():
+        return None
+    font_manager.fontManager.addfont(str(font_path))
+    return font_manager.FontProperties(fname=str(font_path))
+
 
 # ===== ユーティリティ =====
 def pick(row, *keys, default=None):
@@ -72,7 +86,6 @@ def build_citrus_image_url_from_id(item_id) -> str:
 # ===== no-image（デフォルト画像）=====
 NO_IMAGE_PATH = Path(__file__).resolve().parent.parent / "other_images/no_image.png"
 NO_IMAGE_URL = image_file_to_data_url(str(NO_IMAGE_PATH)) or "https://via.placeholder.com/200x150?text=No+Image"
-
 
 # ===== CSS =====
 st.markdown(
@@ -178,7 +191,7 @@ st.markdown(
 
 # ===== 外部リンク生成 =====
 def build_amazon_url(name: str) -> str:
-    q = quote(f'{name} 柑橘 みかん 生果 -家庭用 -贈答 -苗 -苗木 -種 -栽培 -のぼり')
+    q = quote(f'{name} 柑橘 みかん 生果 -家庭用 -贈答 -苗 -苗木 -種 -栽培')
     return f"https://www.amazon.co.jp/s?k={q}"
 
 def build_rakuten_url(name: str) -> str:
@@ -226,7 +239,29 @@ def build_twitter_share(names: list[str]) -> str:
     )
     return f"https://twitter.com/intent/tweet?text={quote(text_raw)}"
 
-# ===== Excel（説明と画像）=====
+# ===== R2: features.csv =====
+@st.cache_data(ttl=3600)
+def load_features_df() -> pd.DataFrame:
+    required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
+    missing = [k for k in required if k not in st.secrets]
+    if missing:
+        raise RuntimeError(f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。")
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"https://{st.secrets['r2_account_id']}.r2.cloudflarestorage.com",
+        aws_access_key_id=st.secrets["r2_access_key_id"],
+        aws_secret_access_key=st.secrets["r2_secret_access_key"],
+    )
+
+    key = st.secrets.get("r2_key") or "citrus_features.csv"
+    obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
+    df = pd.read_csv(BytesIO(obj["Body"].read()))
+    if "Item_ID" in df.columns:
+        df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
+    return df
+
+# ===== R2: details.xlsx =====
 @st.cache_data(ttl=3600)
 def load_details_df() -> pd.DataFrame:
     required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
@@ -243,20 +278,64 @@ def load_details_df() -> pd.DataFrame:
         aws_secret_access_key=st.secrets["r2_secret_access_key"],
     )
 
-    # ★Excel用キー（無ければ固定名で読む）
     key = st.secrets.get("r2_details_key") or "citrus_details_list.xlsx"
-
     obj = s3.get_object(Bucket=st.secrets["r2_bucket"], Key=key)
 
     df = pd.read_excel(BytesIO(obj["Body"].read()), sheet_name="description_image")
-
-    # 期待列の正規化（念のため）
     if "Item_ID" in df.columns:
         df["Item_ID"] = pd.to_numeric(df["Item_ID"], errors="coerce")
-
     return df
 
-details_df = load_details_df()
+# ===== レーダーチャート（nologinと同じ柑橘UI）=====
+@st.cache_data(show_spinner=False)
+def radar_png_data_url(
+    brix: int, acid: int, bitter: int, smell: int, moisture: int, elastic: int,
+    title: str = ""
+) -> str:
+    fp = get_jp_fontprop()
+
+    labels = ["甘さ", "酸味", "苦味", "香り", "ジューシーさ", "食感"]
+    values = [brix, acid, bitter, smell, moisture, elastic]
+    values = values + [values[0]]
+
+    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+    angles = angles + [angles[0]]
+
+    fig = plt.figure(figsize=(3.2, 2.6), dpi=180)
+    ax = plt.subplot(111, polar=True)
+
+    line_color = "#F59E0B"
+    fill_color = "#FDBA74"
+    grid_color = "#E7D7C5"
+    text_color = "#4B3B2B"
+
+    ax.set_facecolor("#FFF7ED")
+    ax.grid(color=grid_color, linewidth=1.0, alpha=0.9)
+    ax.spines["polar"].set_color("#E8B26A")
+    ax.spines["polar"].set_linewidth(1.4)
+
+    ax.plot(angles, values, linewidth=2.6, color=line_color)
+    ax.fill(angles, values, color=fill_color, alpha=0.35)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels, fontsize=9, color=text_color, fontproperties=fp)
+
+    ax.set_ylim(1, 6)
+    ax.set_yticks([1, 2, 3, 4, 5, 6])
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=8, color=text_color)
+    ax.set_rlabel_position(22)
+
+    if title:
+        ax.set_title(title, fontsize=10, pad=10, color=text_color, fontproperties=fp)
+
+    fig.tight_layout(pad=0.6)
+
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
+    plt.close(fig)
+
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{b64}"
 
 # ===== データ取得 =====
 TOPK = 3
@@ -269,8 +348,19 @@ if not top_ids:
             st.rerun()
     st.stop()
 
+# ===== データ読み込み =====
+features_df = load_features_df()
+details_df = load_details_df()
 
-# Excelの説明と画像を結合（scoreを消さない！）
+TOPK = 3
+top_ids = st.session_state.get("top_ids")
+if not top_ids:
+    st.error("診断結果が見つからないため，トップページからやり直してほしい．")
+    if st.button("← トップへ戻る", use_container_width=True):
+        st.session_state["route"] = "top_login" if st.session_state.get("user_logged_in") else "top"
+        st.rerun()
+    st.stop()
+
 top_ids_int = []
 for x in top_ids:
     try:
@@ -278,11 +368,9 @@ for x in top_ids:
     except Exception:
         pass
 
-# details_df から top_ids の行だけ抜き出し、top_ids の順に並べる
 df_sel = details_df[details_df["Item_ID"].isin(top_ids_int)].copy()
 df_sel["__order"] = pd.Categorical(df_sel["Item_ID"], categories=top_ids_int, ordered=True)
 df_sel = df_sel.sort_values("__order").reset_index(drop=True)
-
 top_items = df_sel.head(TOPK)
 
 # ===== UI =====
@@ -296,52 +384,72 @@ def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
     desc = pick(row, "Description", "description", default="")
     item_id = pick(row, "Item_ID", default=None)
-    image_url = NO_IMAGE_URL  # デフォルトは必ず no-image
+
+    image_url = NO_IMAGE_URL
     real_url = build_citrus_image_url_from_id(item_id)
     if real_url:
         image_url = real_url
 
-    html = f"""
-    <div class="card">
-      <h2>{i}. {name}</h2>
-      <div style="display:flex;gap:20px;align-items:flex-start;">
-        <div style="flex:1;">
-          <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-          <p style="font-size:14px;color:#333;">{desc}</p>
+    radar_html = ""
+    try:
+        iid = int(item_id)
+        frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
+        radar_url = radar_png_data_url(
+            brix=int(frow["brix"]),
+            acid=int(frow["acid"]),
+            bitter=int(frow["bitter"]),
+            smell=int(frow["smell"]),
+            moisture=int(frow["moisture"]),
+            elastic=int(frow["elastic"]),
+            title="この品種の特徴",
+        )
+        radar_html = f"""
+        <div style="margin-top:10px;">
+          <img src="{radar_url}" style="max-width:100%; border-radius:12px; padding:8px; background:#FFF7ED; border:1px solid #F1D3A7;">
         </div>
-        <div style="flex:1;text-align:center;">
-            <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">
-                Amazonで生果を探す
-            </a><br>
-            <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">
-                楽天で贈答/家庭用を探す
-            </a><br>
-            <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">
-                ふるさと納税で探す
-            </a>
-        </div>
-      </div>
+        """
+    except Exception:
+        radar_html = ""
+
+    html_raw = f"""
+<div class="card">
+  <h2>{i}. {name}</h2>
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="flex:1;">
+      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
+      <p style="font-size:14px;color:#333;">{desc}</p>
     </div>
-    """
+
+    <div style="flex:1;text-align:center;">
+      <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">Amazonで生果を探す</a><br>
+      <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">楽天で贈答/家庭用を探す</a><br>
+      <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">ふるさと納税で探す</a>
+
+      {radar_html}
+    </div>
+  </div>
+</div>
+"""
+    html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
     st.markdown(html, unsafe_allow_html=True)
 
-for i, row in enumerate(top_items.itertuples(), start=1):
+for i, r in enumerate(top_items.itertuples(), start=1):
     with quadrants[i - 1]:
-        render_card(i, row)
+        render_card(i, r)
 
 with quadrants[3]:
     names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
     twitter_url = build_twitter_share(names)
 
-    st.markdown(f"""
-    <div class="card" style="text-align:center;">
-      <h3>まとめ</h3>
-      <a class="link-btn x-btn" href="{twitter_url}" target="_blank">
-        Xでシェア
-      </a>
-      <div style="margin-top:14px;"></div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="card" style="text-align:center;">
+          <h3>まとめ</h3>
+          <a class="link-btn x-btn" href="{twitter_url}" target="_blank">Xでシェア</a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if st.button("🔁 もう一回診断する（入力を変える）", use_container_width=True):
         st.session_state["top_ids"] = None
@@ -349,5 +457,5 @@ with quadrants[3]:
         st.rerun()
 
     if st.button("← トップへ戻る", use_container_width=True):
-            st.session_state["route"] = "top"
-            st.rerun()
+        st.session_state["route"] = "top_login"
+        st.rerun()
