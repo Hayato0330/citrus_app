@@ -2,7 +2,6 @@ streamlit
 pandas
 numpy
 matplotlib
-japanize-matplotlib
 scikit-learn
 supabase
 requests
