@@ -451,11 +451,6 @@ with quadrants[3]:
         unsafe_allow_html=True,
     )
 
-    if st.button("🔁 もう一回診断する（入力を変える）", use_container_width=True):
-        st.session_state["top_ids"] = None
-        st.session_state["route"] = "input"
-        st.rerun()
-
     if st.button("← トップへ戻る", use_container_width=True):
         st.session_state["route"] = "top_login"
         st.rerun()
