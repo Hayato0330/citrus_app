@@ -373,7 +373,7 @@ st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
 def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
-    desc = pick(row, "Description", "description", default="")
+    desc = pick(row, "Description", "description", default="") or ""
     item_id = pick(row, "Item_ID", default=None)
 
     image_url = NO_IMAGE_URL
@@ -381,7 +381,10 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
+    # まず空で用意（ここ重要）
     radar_html = ""
+
+    # --- レーダーは try/except（失敗しても radar_html="" のまま）---
     try:
         iid = int(item_id)
         frow = features_df.loc[features_df["Item_ID"] == iid].iloc[0]
@@ -396,13 +399,22 @@ def render_card(i, row):
         )
         radar_html = f"""
         <div style="width:100%; display:flex; justify-content:center;">
-          <img src="{radar_url}" style="width:100%; max-width:320px; border-radius:12px; padding:8px; background:#FFF7ED; border:1px solid #F1D3A7;">
+          <img src="{radar_url}" style="
+              width:100%;
+              max-width:320px;
+              border-radius:12px;
+              padding:8px;
+              background:#FFF7ED;
+              border:1px solid #F1D3A7;
+              box-sizing:border-box;
+            ">
         </div>
         """
     except Exception:
         radar_html = ""
 
-        html_raw = f"""
+    # ✅ html_raw は try/except の外で「必ず」作る
+    html_raw = f"""
 <div class="card">
   <h2>{i}. {name}</h2>
 
@@ -410,11 +422,11 @@ def render_card(i, row):
       display:flex;
       gap:18px;
       align-items:flex-start;
-      max-width: 1200px;
-      margin: 0 auto;
-      flex-wrap: wrap;
-      overflow: hidden;
-      box-sizing: border-box;
+      max-width:1200px;
+      margin:0 auto;
+      flex-wrap:wrap;
+      overflow:hidden;
+      box-sizing:border-box;
     ">
 
     <!-- 1) 画像 -->
@@ -422,19 +434,9 @@ def render_card(i, row):
       <img src="{image_url}" style="width:100%; border-radius:12px; display:block;">
     </div>
 
-    <!-- 2) 説明文 -->
-    <div style="
-        flex:0 0 360px;           /* ← ここ重要：growしない */
-        max-width:360px;
-        box-sizing:border-box;
-      ">
-      <p style="
-          font-size:14px;
-          color:#333;
-          margin:0;
-          line-height:1.7;
-          word-break:break-word;
-        ">
+    <!-- 2) 説明文（伸びない） -->
+    <div style="flex:0 0 360px; max-width:360px; box-sizing:border-box;">
+      <p style="font-size:14px; color:#333; margin:0; line-height:1.7; word-break:break-word;">
         {desc}
       </p>
     </div>
@@ -460,6 +462,7 @@ def render_card(i, row):
   </div>
 </div>
 """
+
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
     st.markdown(html, unsafe_allow_html=True)
 
