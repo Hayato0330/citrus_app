@@ -395,8 +395,8 @@ def render_card(i, row):
             title="この品種の特徴",
         )
         radar_html = f"""
-        <div style="margin-top:10px;">
-          <img src="{radar_url}" style="max-width:100%; border-radius:8px;">
+        <div style="width:100%; display:flex; justify-content:center;">
+          <img src="{radar_url}" style="width:100%; max-width:320px; border-radius:12px; padding:8px; background:#FFF7ED; border:1px solid #F1D3A7;">
         </div>
         """
     except Exception:
@@ -406,33 +406,42 @@ def render_card(i, row):
 <div class="card">
   <h2>{i}. {name}</h2>
 
-  <div style="display:flex; gap:18px; align-items:flex-start; max-width: 1180px; margin: 0 auto;">
+  <div style="
+      display:flex;
+      gap:18px;
+      align-items:flex-start;
+      max-width: 1200px;
+      margin: 0 auto;
+    ">
 
-    <!-- 左：画像 -->
-    <div style="width:240px; flex:0 0 240px;">
-      <img src="{image_url}" style="width:100%; border-radius:10px;">
+    <!-- 1) 画像 -->
+    <div style="flex:0 0 300px;">
+      <img src="{image_url}" style="width:100%; border-radius:12px;">
     </div>
 
-    <!-- 中：説明 -->
-    <div style="flex:1; max-width: 560px; min-width:260px;">
-      <p style="font-size:14px; color:#333; margin-top:0; line-height:1.65;">
+    <!-- 2) 説明文 -->
+    <div style="flex:1 1 420px; min-width:320px;">
+      <p style="font-size:14px; color:#333; margin:0; line-height:1.7;">
         {desc}
       </p>
     </div>
 
-    <!-- 右：購入リンク＋ログインメリット＋レーダー -->
-    <div style="width:320px; flex:0 0 320px; text-align:center;">
+    <!-- 3) レーダー -->
+    <div style="flex:0 0 360px;">
+      {radar_html}
+    </div>
+
+    <!-- 4) ボタン＋メリット -->
+    <div style="flex:0 0 240px; text-align:center;">
       <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
       <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
       <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
 
-      <p style="font-size:13px; color:#666; margin:10px 0 0; line-height:1.5;">
+      <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
         <b>ログインするとできること</b><br>
         ・気になった柑橘を <b>購入ページまで進める</b><br>
         ・入力を変えて <b>何度でも試せる</b>
       </p>
-
-      {radar_html}
     </div>
 
   </div>
