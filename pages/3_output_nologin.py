@@ -371,10 +371,6 @@ top_items = df_sel.head(TOPK)
 # ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
-cols_top = st.columns(2)
-cols_bottom = st.columns(2)
-quadrants = [cols_top[0], cols_top[1], cols_bottom[0], cols_bottom[1]]
-
 def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
     desc = pick(row, "Description", "description", default="")
@@ -409,18 +405,28 @@ def render_card(i, row):
     html_raw = f"""
 <div class="card">
   <h2>{i}. {name}</h2>
-  <div style="display:flex;gap:20px;align-items:flex-start;">
-    <div style="flex:1;">
-      <img src="{image_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;">
-      <p style="font-size:14px;color:#333;">{desc}</p>
+
+  <div style="display:flex; gap:18px; align-items:flex-start;">
+
+    <!-- 左：画像 -->
+    <div style="width:240px; flex:0 0 240px;">
+      <img src="{image_url}" style="width:100%; border-radius:10px;">
     </div>
 
-    <div style="flex:1;text-align:center;">
+    <!-- 中：説明 -->
+    <div style="flex:1; min-width:260px;">
+      <p style="font-size:14px; color:#333; margin-top:0; line-height:1.65;">
+        {desc}
+      </p>
+    </div>
+
+    <!-- 右：購入リンク＋ログインメリット＋レーダー -->
+    <div style="width:320px; flex:0 0 320px; text-align:center;">
       <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
       <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
       <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
 
-      <p style="font-size:13px;color:#666;margin-top:10px;line-height:1.5;">
+      <p style="font-size:13px; color:#666; margin:10px 0 0; line-height:1.5;">
         <b>ログインするとできること</b><br>
         ・気になった柑橘を <b>購入ページまで進める</b><br>
         ・入力を変えて <b>何度でも試せる</b>
@@ -428,33 +434,32 @@ def render_card(i, row):
 
       {radar_html}
     </div>
+
   </div>
 </div>
 """
-
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
-
     st.markdown(html, unsafe_allow_html=True)
 
+# 1→2→3 を縦列
 for i, r in enumerate(top_items.itertuples(), start=1):
-    with quadrants[i - 1]:
-        render_card(i, r)
+    render_card(i, r)
 
-with quadrants[3]:
-    names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
-    twitter_url = build_twitter_share(names)
+# まとめ
+names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
+twitter_url = build_twitter_share(names)
 
-    st.markdown(
-        f"""
-        <div class="card" style="text-align:center;">
-          <h3>まとめ</h3>
-          <a class="link-btn x-btn" href="{twitter_url}" target="_blank">Xでシェア</a>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+st.markdown(
+    f"""
+    <div class="card" style="text-align:center;">
+      <h3>まとめ</h3>
+      <a class="link-btn x-btn" href="{twitter_url}" target="_blank">Xでシェア</a>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    if st.button("ログインして購入リンクを見る", use_container_width=True):
-        st.session_state["route"] = "login"
-        st.session_state.pop("navigate_to", None)
-        st.rerun()
+if st.button("ログインして購入リンクを見る", use_container_width=True):
+    st.session_state["route"] = "login"
+    st.session_state.pop("navigate_to", None)
+    st.rerun()
