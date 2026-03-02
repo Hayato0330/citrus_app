@@ -420,19 +420,19 @@ def render_card(i, row):
     </div>
 
     <!-- 2) 説明文 -->
-    <div style="flex:1 1 420px; min-width:320px;">
+    <div style="flex:1 1 320px; min-width:300px;">
       <p style="font-size:14px; color:#333; margin:0; line-height:1.7;">
         {desc}
       </p>
     </div>
 
     <!-- 3) レーダー -->
-    <div style="flex:0 0 360px;">
+    <div style="flex:0 0 320px;">
       {radar_html}
     </div>
 
     <!-- 4) ボタン＋メリット -->
-    <div style="flex:0 0 240px; text-align:center;">
+    <div style="flex:0 0 280px; text-align:center;">
       <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
       <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
       <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
