@@ -402,7 +402,7 @@ def render_card(i, row):
     except Exception:
         radar_html = ""
 
-    html_raw = f"""
+        html_raw = f"""
 <div class="card">
   <h2>{i}. {name}</h2>
 
@@ -412,27 +412,40 @@ def render_card(i, row):
       align-items:flex-start;
       max-width: 1200px;
       margin: 0 auto;
+      flex-wrap: wrap;
+      overflow: hidden;
+      box-sizing: border-box;
     ">
 
     <!-- 1) 画像 -->
-    <div style="flex:0 0 300px;">
-      <img src="{image_url}" style="width:100%; border-radius:12px;">
+    <div style="flex:0 0 300px; box-sizing:border-box;">
+      <img src="{image_url}" style="width:100%; border-radius:12px; display:block;">
     </div>
 
     <!-- 2) 説明文 -->
-    <div style="flex:1 1 320px; min-width:300px;">
-      <p style="font-size:14px; color:#333; margin:0; line-height:1.7;">
+    <div style="
+        flex:0 0 360px;           /* ← ここ重要：growしない */
+        max-width:360px;
+        box-sizing:border-box;
+      ">
+      <p style="
+          font-size:14px;
+          color:#333;
+          margin:0;
+          line-height:1.7;
+          word-break:break-word;
+        ">
         {desc}
       </p>
     </div>
 
     <!-- 3) レーダー -->
-    <div style="flex:0 0 320px;">
+    <div style="flex:0 0 320px; box-sizing:border-box;">
       {radar_html}
     </div>
 
     <!-- 4) ボタン＋メリット -->
-    <div style="flex:0 0 280px; text-align:center;">
+    <div style="flex:0 0 220px; text-align:center; box-sizing:border-box;">
       <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
       <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
       <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>

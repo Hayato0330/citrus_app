@@ -376,7 +376,6 @@ top_items = df_sel.head(TOPK)
 # ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
-# 3品種を縦に積む（横一列カードを3枚）
 def render_card(i, row):
     name = pick(row, "Item_name", "name", default="不明")
     desc = pick(row, "Description", "description", default="")
@@ -387,6 +386,7 @@ def render_card(i, row):
     if real_url:
         image_url = real_url
 
+    # --- レーダー ---
     radar_html = ""
     try:
         iid = int(item_id)
@@ -402,12 +402,21 @@ def render_card(i, row):
         )
         radar_html = f"""
         <div style="width:100%; display:flex; justify-content:center;">
-          <img src="{radar_url}" style="width:100%; max-width:320px; border-radius:12px; padding:8px; background:#FFF7ED; border:1px solid #F1D3A7;">
+          <img src="{radar_url}" style="
+              width:100%;
+              max-width:320px;
+              border-radius:12px;
+              padding:8px;
+              background:#FFF7ED;
+              border:1px solid #F1D3A7;
+              box-sizing:border-box;
+            ">
         </div>
         """
     except Exception:
         radar_html = ""
 
+    # --- カード（横一列） ---
     html_raw = f"""
 <div class="card">
   <h2>{i}. {name}</h2>
@@ -418,27 +427,40 @@ def render_card(i, row):
       align-items:flex-start;
       max-width: 1200px;
       margin: 0 auto;
+      flex-wrap: wrap;
+      overflow: hidden;
+      box-sizing: border-box;
     ">
 
     <!-- 1) 画像 -->
-    <div style="flex:0 0 320px;">
-      <img src="{image_url}" style="width:100%; border-radius:12px;">
+    <div style="flex:0 0 300px; box-sizing:border-box;">
+      <img src="{image_url}" style="width:100%; border-radius:12px; display:block;">
     </div>
 
     <!-- 2) 説明文 -->
-    <div style="flex:1 1 320px; min-width:300px;">
-      <p style="font-size:14px; color:#333; margin:0; line-height:1.7;">
+    <div style="
+        flex:0 0 360px;
+        max-width:360px;
+        box-sizing:border-box;
+      ">
+      <p style="
+          font-size:14px;
+          color:#333;
+          margin:0;
+          line-height:1.7;
+          word-break:break-word;
+        ">
         {desc}
       </p>
     </div>
 
     <!-- 3) レーダー -->
-    <div style="flex:0 0 320px;">
+    <div style="flex:0 0 320px; box-sizing:border-box;">
       {radar_html}
     </div>
 
     <!-- 4) リンクボタン -->
-    <div style="flex:0 0 280px; text-align:center;">
+    <div style="flex:0 0 220px; text-align:center; box-sizing:border-box;">
       <a class="link-btn amazon-btn" href="{build_amazon_url(name)}" target="_blank">Amazonで生果を探す</a><br>
       <a class="link-btn rakuten-btn" href="{build_rakuten_url(name)}" target="_blank">楽天で贈答/家庭用を探す</a><br>
       <a class="link-btn satofuru-btn" href="{build_satofuru_url(name)}" target="_blank">ふるさと納税で探す</a>
@@ -450,11 +472,11 @@ def render_card(i, row):
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
     st.markdown(html, unsafe_allow_html=True)
 
-# 1〜3位を縦に並べる
+# 1→2→3 を縦に積む（カード自体は横一列）
 for i, r in enumerate(top_items.itertuples(), start=1):
     render_card(i, r)
 
-# まとめカード（右下にあったやつを縦積みの末尾に）
+# ===== まとめ =====
 names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
 twitter_url = build_twitter_share(names)
 
