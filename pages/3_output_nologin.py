@@ -406,7 +406,7 @@ def render_card(i, row):
 <div class="card">
   <h2>{i}. {name}</h2>
 
-  <div style="display:flex; gap:18px; align-items:flex-start;">
+  <div style="display:flex; gap:18px; align-items:flex-start; max-width: 1180px; margin: 0 auto;">
 
     <!-- 左：画像 -->
     <div style="width:240px; flex:0 0 240px;">
@@ -414,7 +414,7 @@ def render_card(i, row):
     </div>
 
     <!-- 中：説明 -->
-    <div style="flex:1; min-width:260px;">
+    <div style="flex:1; max-width: 560px; min-width:260px;">
       <p style="font-size:14px; color:#333; margin-top:0; line-height:1.65;">
         {desc}
       </p>
