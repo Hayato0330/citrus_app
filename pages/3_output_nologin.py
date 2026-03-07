@@ -170,7 +170,7 @@ st.markdown(
         /* PC幅で4列固定 */
         .result-grid {
           display:grid;
-          grid-template-columns: 330px 250px 300px 210px;
+          grid-template-columns: 320px 220px 250px 260px;
           column-gap: 18px;
           align-items: start;
           width: 100%;
@@ -180,7 +180,7 @@ st.markdown(
         /* 少し狭い画面では少し詰める */
         @media (max-width: 1500px) {
           .result-grid {
-            grid-template-columns: 300px minmax(200px, 1fr) 220px 190px;
+            grid-template-columns: 300px 200px 230px 240px;
             column-gap: 14px;
           }
         }
@@ -291,7 +291,7 @@ def radar_png_data_url(
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles = angles + [angles[0]]
 
-    fig = plt.figure(figsize=(2.2, 2.0), dpi=170)
+    fig = plt.figure(figsize=(2.35, 2.15), dpi=170)
     ax = plt.subplot(111, polar=True)
 
     line_color = "#F59E0B"
@@ -308,17 +308,17 @@ def radar_png_data_url(
     ax.fill(angles, values, color=fill_color, alpha=0.35)
 
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, fontsize=8.2, color=text_color, fontproperties=fp)
+    ax.set_xticklabels(labels, fontsize=8.4, color=text_color, fontproperties=fp)
 
     ax.set_ylim(1, 6)
     ax.set_yticks([1, 2, 3, 4, 5, 6])
-    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=7.2, color=text_color)
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=7.3, color=text_color)
     ax.set_rlabel_position(22)
 
     if title:
-        ax.set_title(title, fontsize=9.2, pad=8, color=text_color, fontproperties=fp)
+        ax.set_title(title, fontsize=9.4, pad=8, color=text_color, fontproperties=fp)
 
-    fig.tight_layout(pad=0.4)
+    fig.tight_layout(pad=0.35)
     buf = BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
     plt.close(fig)
@@ -409,7 +409,7 @@ def render_card(i, row):
         radar_html = f"""
         <div style="display:flex; justify-content:center;">
           <img src="{radar_url}" style="
-              width:280px;
+              width:230px;
               max-width:100%;
               border-radius:12px;
               padding:6px;
@@ -433,7 +433,7 @@ def render_card(i, row):
     <div>
       <img src="{image_url}" style="
           width:100%;
-          max-width:340px;
+          max-width:320px;
           border-radius:12px;
           display:block;
         ">
