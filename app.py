@@ -2,6 +2,8 @@
 import runpy
 import streamlit as st
 
+from pages.log_utils import append_simple_log
+
 # アプリ全体のページ設定
 st.set_page_config(page_title="柑橘類の推薦システム", page_icon="🍊", layout="wide")
 
@@ -52,59 +54,62 @@ if route == "top":
         st.rerun()
 
 # ===== top_login ページ（ログイン後トップ）=====
-elif route == "top_login":
-    runpy.run_path("pages/1_top_login.py")
-    if st.session_state.get("navigate_to") == "input":
-        st.session_state["route"] = "input"
-        del st.session_state["navigate_to"]
-        st.rerun()
-
-# ===== input ページ =====
 elif route == "input":
     # 入力ページの描画
-    runpy.run_path("pages/2_input.py")  # :contentReference[oaicite:1]{index=1}
+    runpy.run_path("pages/2_input.py")
 
-    # 「完了」ボタンが押され，入力・右側コメントが揃っている場合
+    # 「完了」ボタンが押された場合
     if st.session_state.get("input_submitted"):
         # すぐにフラグを下ろして二重実行を防ぐ
         st.session_state["input_submitted"] = False
 
-        # 入力値を取得（2_input.py がセッションに格納している前提）
-        try:
-            sweetness = int(st.session_state["val_brix"])
-            sourness = int(st.session_state["val_acid"])
-            bitterness = int(st.session_state["val_bitterness"])
-            aroma = int(st.session_state["val_aroma"])
-            juiciness = int(st.session_state["val_moisture"])
-            texture = int(st.session_state["val_texture"])
-        except Exception as e:
-            st.error(f"入力値の取得に失敗した．もう一度入力してほしい．（詳細: {e}）")
+        input_dict = st.session_state.get("user_preferences")
+        if not isinstance(input_dict, dict):
+            st.error("入力内容の取得に失敗した．もう一度入力してほしい．")
         else:
-            # 計算ロジックを読み込んで top3 ID を取得
-            logic_ns = runpy.run_path("pages/2_calculation_logic.py")  # :contentReference[oaicite:2]{index=2}
-            calculate_top3_ids = logic_ns["calculate_top3_ids"]
-
             try:
-                top_ids = calculate_top3_ids(
-                    sweetness=sweetness,
-                    sourness=sourness,
-                    bitterness=bitterness,
-                    aroma=aroma,
-                    juiciness=juiciness,
-                    texture=texture,
-                )
+                sweetness = int(input_dict["brix"])
+                sourness = int(input_dict["acid"])
+                bitterness = int(input_dict["bitterness"])
+                aroma = int(input_dict["aroma"])
+                juiciness = int(input_dict["moisture"])
+                texture = int(input_dict["texture"])
             except Exception as e:
-                st.error(f"類似度計算中にエラーが発生した．R2の設定やCSVを確認してほしい．（詳細: {e}）")
+                st.error(f"入力値の取得に失敗した．もう一度入力してほしい．（詳細: {e}）")
             else:
-                # 出力IDをセッションに保存して結果ページへ
-                st.session_state["top_ids"] = top_ids
-                #.  ログイン有無で結果ページ分岐 By 本間
-                if st.session_state["user_logged_in"]:
-                    st.session_state["route"] = "result_login"
-                else:
-                    st.session_state["route"] = "result"
+                # 計算ロジックを読み込んで top3 ID を取得
+                logic_ns = runpy.run_path("pages/2_calculation_logic.py")
+                calculate_top3_ids = logic_ns["calculate_top3_ids"]
 
-                st.rerun()
+                try:
+                    top_ids = calculate_top3_ids(
+                        sweetness=sweetness,
+                        sourness=sourness,
+                        bitterness=bitterness,
+                        aroma=aroma,
+                        juiciness=juiciness,
+                        texture=texture,
+                    )
+                except Exception as e:
+                    st.error(f"類似度計算中にエラーが発生した．R2の設定やCSVを確認してほしい．（詳細: {e}）")
+                else:
+                    # 出力IDをセッションに保存
+                    st.session_state["top_ids"] = top_ids
+
+                    # D1へ入力値と結果をまとめて保存
+                    result_for_log = [
+                        {"id": int(item_id), "rank": rank}
+                        for rank, item_id in enumerate(top_ids, start=1)
+                    ]
+                    append_simple_log(input_dict=input_dict, result_value=result_for_log)
+
+                    # ログイン有無で結果ページ分岐
+                    if st.session_state["user_logged_in"]:
+                        st.session_state["route"] = "result_login"
+                    else:
+                        st.session_state["route"] = "result"
+
+                    st.rerun()
 
     # サイドバーにトップへ戻るボタン
     with st.sidebar:

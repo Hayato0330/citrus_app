@@ -4,14 +4,11 @@
 import math
 from typing import List, Dict
 from io import BytesIO
-from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 import boto3
-import requests
-import uuid
 
 # ===== 基本設定 =====
 st.set_page_config(page_title="柑橘レコメンダ 🍊", page_icon="🍊", layout="wide")
@@ -123,103 +120,6 @@ ALIASES = {
 }
 
 # ===== ユーティリティ =====
-
-def _normalize_result_for_log(result_value) -> list:
-    """
-    推薦結果をD1のresultカラムに保存しやすい形へ正規化する．
-    想定入力例：
-    - ["みかん", "せとか", "はるみ"]
-    - [{"name": "みかん"}, {"name": "せとか"}, {"name": "はるみ"}]
-    - [{"citrus": "みかん", "score": 0.91}, ...]
-    """
-    if result_value is None:
-        return []
-
-    if isinstance(result_value, str):
-        result_value = [result_value]
-
-    normalized = []
-    if isinstance(result_value, (list, tuple)):
-        for item in result_value:
-            if isinstance(item, str):
-                normalized.append({"name": item})
-            elif isinstance(item, dict):
-                name = (
-                    item.get("name")
-                    or item.get("citrus")
-                    or item.get("fruit")
-                    or item.get("label")
-                    or item.get("品種")
-                    or item.get("柑橘")
-                )
-                if name is not None:
-                    row = {"name": name}
-                    for k in ["score", "rank", "reason", "description"]:
-                        if k in item and item[k] is not None:
-                            row[k] = item[k]
-                    normalized.append(row)
-                else:
-                    normalized.append(item)
-            else:
-                normalized.append({"value": item})
-
-    return normalized[:3]
-
-
-def _get_result_candidates_from_session() -> list:
-    """他画面や後続処理がsession_stateに保存した推薦結果候補を拾う．"""
-    candidate_keys = [
-        "recommendations",
-        "recommendation_results",
-        "top3_results",
-        "top_results",
-        "result",
-        "results",
-        "recommended_citrus",
-        "recommended_items",
-    ]
-    for key in candidate_keys:
-        value = st.session_state.get(key)
-        normalized = _normalize_result_for_log(value)
-        if normalized:
-            return normalized
-    return []
-
-def _append_simple_log(input_dict: dict, result_value=None) -> None:
-    """
-    入力値だけをログPOSTする．Secrets未設定ならスキップする．
-    直近の重複送信は抑止する．
-    """
-    url = st.secrets.get("log_api_url")
-    token = st.secrets.get("log_api_token")
-    if not url or not token:
-        return
-
-    normalized_result = _normalize_result_for_log(result_value)
-    if not normalized_result:
-        normalized_result = _get_result_candidates_from_session()
-
-    payload = {
-        "user_id": st.session_state.get("user_id"),  # ★ 追加：ユーザIDも送信 By 本間
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
-        "input_json": input_dict,
-        "result": normalized_result,
-    }
-    # input_json と result の両方で重複判定を行う
-    key = str(hash(str(payload["input_json"]) + str(payload["result"])))
-    if st.session_state.get("last_log_key") == key:
-        return
-
-    try:
-        r = requests.post(url, json=payload, headers={"Authorization": f"Bearer {token}"}, timeout=5)
-        if r.status_code >= 400:
-            st.error(f"ログAPIエラー: {r.status_code}\n{r.text}")
-            return
-        st.session_state["last_log_key"] = key
-    except Exception as e:
-        st.info(f"ログ送信をスキップした（理由：{e}）")
-
 def label_map(k: str) -> str:
     return {
         "brix": "甘さ",
@@ -229,6 +129,7 @@ def label_map(k: str) -> str:
         "moisture": "ジューシーさ",
         "texture": "食感（しっかり）",
     }.get(k, k)
+ 
 
 # ===== UI =====
 st.title("🍊 柑橘類の推薦システム")
@@ -343,7 +244,7 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
     if missing:
         st.error("未入力の項目があるため送信できない．全項目を選択してから再度実行すること．")
     else:
-        # D1ログ：季節・ヒント文の項目は送信しない
+        # app.py に渡す入力値をセッションに保存する
         input_dict = {
             "brix": int(st.session_state.val_brix),
             "acid": int(st.session_state.val_acid),
@@ -353,15 +254,10 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "texture": int(st.session_state.val_texture),
             "user_id": st.session_state.get("user_id"),
         }
-        result_for_log = _get_result_candidates_from_session()
-        _append_simple_log(input_dict=input_dict, result_value=result_for_log)
-
 
         # ★ ここから追加：app.py に渡すための情報をセッションにセット
         st.session_state["user_preferences"] = input_dict
         st.session_state["input_submitted"] = True
-
-        st.success("入力値をログとして送信した．")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
