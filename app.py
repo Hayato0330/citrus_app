@@ -2,7 +2,7 @@
 import runpy
 import streamlit as st
 
-from log_utils import append_simple_log
+from log_utils import append_simple_log, append_event_log
 
 # アプリ全体のページ設定
 st.set_page_config(page_title="柑橘類の推薦システム", page_icon="🍊", layout="wide")
@@ -44,13 +44,23 @@ if route == "top":
     runpy.run_path("pages/1_top.py")
 
     if st.session_state.get("navigate_to") == "input":
+        old_route = st.session_state.get("route")
         st.session_state["route"] = "input"
+        append_event_log(
+            event_name="route_change",
+            event_data={"from": old_route, "to": "input"},
+        )
         del st.session_state["navigate_to"]
         st.rerun()
 
     if st.session_state.get("navigate_to") == "login":
+        old_route = st.session_state.get("route")
+        st.session_state["route"] = "login"
+        append_event_log(
+            event_name="route_change",
+            event_data={"from": old_route, "to": "login"},
+        )
         del st.session_state["navigate_to"]
-        # OAuth は app.py 冒頭で常に処理されるので rerun だけでOK
         st.rerun()
 
 # ===== top_login ページ（ログイン後トップ）=====
@@ -104,11 +114,20 @@ elif route == "input":
                     append_simple_log(input_dict=input_dict, result_value=result_for_log)
 
                     # ログイン有無で結果ページ分岐
+                    old_route = st.session_state.get("route")
+
                     if st.session_state["user_logged_in"]:
                         st.session_state["route"] = "result_login"
+                        append_event_log(
+                            event_name="route_change",
+                            event_data={"from": old_route, "to": "result_login"},
+                    )
                     else:
                         st.session_state["route"] = "result"
-
+                        append_event_log(
+                            event_name="route_change",
+                            event_data={"from": old_route, "to": "result"},
+                        )
                     st.rerun()
 
     # サイドバーにトップへ戻るボタン
@@ -131,7 +150,12 @@ elif route == "result_login":
 
     with st.sidebar:
         if st.button("← 入力に戻る", use_container_width=True):
+            old_route = st.session_state.get("route")
             st.session_state["route"] = "input"
+            append_event_log(
+                event_name="route_change",
+                event_data={"from": old_route, "to": "input"},
+            )
             st.rerun()
 
 ## ログイン無
@@ -143,5 +167,10 @@ elif route == "result":
 
     with st.sidebar:
         if st.button("← 入力に戻る", use_container_width=True):
+            old_route = st.session_state.get("route")
             st.session_state["route"] = "input"
+            append_event_log(
+                event_name="route_change",
+                event_data={"from": old_route, "to": "input"},
+            )
             st.rerun()

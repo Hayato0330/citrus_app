@@ -11,6 +11,8 @@ from pathlib import Path
 from io import BytesIO
 from matplotlib import font_manager
 
+from log_utils import append_event_log
+
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
@@ -162,7 +164,6 @@ st.markdown(
           display: none !important;
         }
 
-        /* PC幅で4列固定 */
         .result-grid {
           display:grid;
           grid-template-columns: 320px 260px 400px 220px;
@@ -172,7 +173,6 @@ st.markdown(
           box-sizing: border-box;
         }
 
-        /* 少し狭い画面では少し詰める */
         @media (max-width: 1500px) {
           .result-grid {
             grid-template-columns: 300px 240px 360px 200px;
@@ -218,6 +218,26 @@ def build_rakuten_url(name: str) -> str:
 def build_satofuru_url(name: str) -> str:
     q = quote(f"site:satofull.jp {name} みかん 柑橘")
     return f"https://www.google.com/search?q={q}"
+
+
+def build_logged_redirect_url(slot: str, destination_url: str) -> str:
+    """
+    外部リンクを直接踏ませず、Cloudflare Worker の中継URLを経由させる。
+    Worker 側で slot 列を 1 に更新してから destination_url に redirect する。
+    """
+    base = st.secrets.get("log_redirect_base_url", "").strip()
+    if not base:
+        return destination_url
+
+    session_id = st.session_state.get("sid", "")
+    user_id = st.session_state.get("user_id", "")
+    return (
+        f"{base}"
+        f"?session_id={quote(str(session_id))}"
+        f"&user_id={quote(str(user_id))}"
+        f"&slot={quote(str(slot))}"
+        f"&to={quote(destination_url, safe='')}"
+    )
 
 
 # ===== 何派 + SNSシェア =====
@@ -390,6 +410,20 @@ df_sel = df_sel.sort_values("__order").reset_index(drop=True)
 top_items = df_sel.head(TOPK)
 
 
+# ===== 結果画面表示ログ（1回だけ） =====
+current_top_ids = [int(x) for x in top_ids_int]
+view_key = f"result_login_view::{','.join(map(str, current_top_ids))}"
+if st.session_state.get("last_result_login_view_key") != view_key:
+    append_event_log(
+        event_name="result_login_view",
+        event_data={
+            "route": "result_login",
+            "top_ids": current_top_ids,
+        },
+    )
+    st.session_state["last_result_login_view_key"] = view_key
+
+
 # ===== UI =====
 st.markdown("### 🍊 柑橘おすすめ診断 - 結果")
 
@@ -434,9 +468,9 @@ def render_card(i, row):
     except Exception:
         radar_html = ""
 
-    amazon_url = build_amazon_url(name)
-    rakuten_url = build_rakuten_url(name)
-    satofuru_url = build_satofuru_url(name)
+    amazon_url = build_logged_redirect_url(f"{i}_a", build_amazon_url(name))
+    rakuten_url = build_logged_redirect_url(f"{i}_r", build_rakuten_url(name))
+    satofuru_url = build_logged_redirect_url(f"{i}_s", build_satofuru_url(name))
 
     html_raw = f"""
 <div class="card">
@@ -475,9 +509,9 @@ def render_card(i, row):
 
     <!-- 4) ボタン -->
     <div style="text-align:center;">
-      <a class="link-btn amazon-btn" href="{amazon_url}" target="_blank">Amazonで生果を探す</a>
-      <a class="link-btn rakuten-btn" href="{rakuten_url}" target="_blank">楽天で贈答/家庭用を探す</a>
-      <a class="link-btn satofuru-btn" href="{satofuru_url}" target="_blank">ふるさと納税で探す</a>
+      <a class="link-btn amazon-btn" href="{amazon_url}" target="_blank" rel="noopener noreferrer">Amazonで生果を探す</a>
+      <a class="link-btn rakuten-btn" href="{rakuten_url}" target="_blank" rel="noopener noreferrer">楽天で贈答/家庭用を探す</a>
+      <a class="link-btn satofuru-btn" href="{satofuru_url}" target="_blank" rel="noopener noreferrer">ふるさと納税で探す</a>
     </div>
 
   </div>
@@ -497,7 +531,7 @@ st.markdown(
     f"""
     <div class="card" style="text-align:center;">
       <h3>まとめ</h3>
-      <a class="link-btn x-btn" href="{twitter_url}" target="_blank">Xでシェア</a>
+      <a class="link-btn x-btn" href="{twitter_url}" target="_blank" rel="noopener noreferrer">Xでシェア</a>
     </div>
     """,
     unsafe_allow_html=True,
