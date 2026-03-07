@@ -2,7 +2,7 @@
 import runpy
 import streamlit as st
 
-from pages.log_utils import append_simple_log
+from log_utils import append_simple_log
 
 # アプリ全体のページ設定
 st.set_page_config(page_title="柑橘類の推薦システム", page_icon="🍊", layout="wide")
