@@ -123,7 +123,69 @@ ALIASES = {
 }
 
 # ===== ユーティリティ =====
-def _append_simple_log(input_dict: dict) -> None:
+
+def _normalize_result_for_log(result_value) -> list:
+    """
+    推薦結果をD1のresultカラムに保存しやすい形へ正規化する．
+    想定入力例：
+    - ["みかん", "せとか", "はるみ"]
+    - [{"name": "みかん"}, {"name": "せとか"}, {"name": "はるみ"}]
+    - [{"citrus": "みかん", "score": 0.91}, ...]
+    """
+    if result_value is None:
+        return []
+
+    if isinstance(result_value, str):
+        result_value = [result_value]
+
+    normalized = []
+    if isinstance(result_value, (list, tuple)):
+        for item in result_value:
+            if isinstance(item, str):
+                normalized.append({"name": item})
+            elif isinstance(item, dict):
+                name = (
+                    item.get("name")
+                    or item.get("citrus")
+                    or item.get("fruit")
+                    or item.get("label")
+                    or item.get("品種")
+                    or item.get("柑橘")
+                )
+                if name is not None:
+                    row = {"name": name}
+                    for k in ["score", "rank", "reason", "description"]:
+                        if k in item and item[k] is not None:
+                            row[k] = item[k]
+                    normalized.append(row)
+                else:
+                    normalized.append(item)
+            else:
+                normalized.append({"value": item})
+
+    return normalized[:3]
+
+
+def _get_result_candidates_from_session() -> list:
+    """他画面や後続処理がsession_stateに保存した推薦結果候補を拾う．"""
+    candidate_keys = [
+        "recommendations",
+        "recommendation_results",
+        "top3_results",
+        "top_results",
+        "result",
+        "results",
+        "recommended_citrus",
+        "recommended_items",
+    ]
+    for key in candidate_keys:
+        value = st.session_state.get(key)
+        normalized = _normalize_result_for_log(value)
+        if normalized:
+            return normalized
+    return []
+
+def _append_simple_log(input_dict: dict, result_value=None) -> None:
     """
     入力値だけをログPOSTする．Secrets未設定ならスキップする．
     直近の重複送信は抑止する．
@@ -133,15 +195,19 @@ def _append_simple_log(input_dict: dict) -> None:
     if not url or not token:
         return
 
+    normalized_result = _normalize_result_for_log(result_value)
+    if not normalized_result:
+        normalized_result = _get_result_candidates_from_session()
+
     payload = {
         "user_id": st.session_state.get("user_id"),  # ★ 追加：ユーザIDも送信 By 本間
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_id": st.session_state.setdefault("sid", str(uuid.uuid4())),
         "input_json": input_dict,
-        # result フィールドは送信しない（DB の result カラムには何も保存しない）
+        "result": normalized_result,
     }
-    # result を含めず，入力のみで重複判定を行う
-    key = str(hash(str(payload["input_json"])))
+    # input_json と result の両方で重複判定を行う
+    key = str(hash(str(payload["input_json"]) + str(payload["result"])))
     if st.session_state.get("last_log_key") == key:
         return
 
@@ -287,7 +353,9 @@ if st.button("完了", type="primary", use_container_width=True, key="btn_submit
             "texture": int(st.session_state.val_texture),
             "user_id": st.session_state.get("user_id"),
         }
-        _append_simple_log(input_dict=input_dict)
+        result_for_log = _get_result_candidates_from_session()
+        _append_simple_log(input_dict=input_dict, result_value=result_for_log)
+
 
         # ★ ここから追加：app.py に渡すための情報をセッションにセット
         st.session_state["user_preferences"] = input_dict
