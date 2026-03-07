@@ -170,8 +170,8 @@ st.markdown(
         /* PC幅で4列固定 */
         .result-grid {
           display:grid;
-          grid-template-columns: 320px 220px 250px 260px;
-          column-gap: 18px;
+          grid-template-columns: 320px 260px 320px 220px;
+          column-gap: 22px;
           align-items: start;
           width: 100%;
           box-sizing: border-box;
@@ -180,7 +180,7 @@ st.markdown(
         /* 少し狭い画面では少し詰める */
         @media (max-width: 1500px) {
           .result-grid {
-            grid-template-columns: 300px 200px 230px 240px;
+            grid-template-columns: 300px 240px 300px 200px;
             column-gap: 14px;
           }
         }
