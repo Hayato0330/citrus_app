@@ -388,10 +388,10 @@ def render_card(i, row):
             title="この品種の特徴",
         )
         radar_html = f"""
-        <div style="width:100%; display:flex; justify-content:center;">
+        <div style="display:flex; justify-content:center; align-items:flex-start;">
           <img src="{radar_url}" style="
-              width:100%;
-              max-width:230px;
+              width:220px;
+              max-width:100%;
               border-radius:12px;
               padding:6px;
               background:#FFF7ED;
@@ -409,43 +409,46 @@ def render_card(i, row):
   <h2>{i}. {name}</h2>
 
   <div style="
-      display:flex;
-      gap:14px;
-      align-items:flex-start;
+      display:grid;
+      grid-template-columns: 360px 1fr 260px 220px;
+      column-gap:20px;
+      align-items:start;
       width:100%;
       box-sizing:border-box;
-      flex-wrap:nowrap;
-      overflow:hidden;
     ">
 
     <!-- 1) 画像 -->
-    <div style="flex:0 0 25%; min-width:0; box-sizing:border-box;">
-      <img src="{image_url}" style="width:100%; border-radius:12px; display:block;">
+    <div>
+      <img src="{image_url}" style="
+          width:100%;
+          max-width:360px;
+          border-radius:12px;
+          display:block;
+        ">
     </div>
 
     <!-- 2) 説明文 -->
-    <div style="flex:0 0 24%; min-width:0; box-sizing:border-box;">
+    <div>
       <p style="
           font-size:14px;
           color:#333;
           margin:0;
           line-height:1.7;
           word-break:break-word;
-          overflow-wrap:anywhere;
         ">
         {desc}
       </p>
     </div>
 
     <!-- 3) レーダー -->
-    <div style="flex:0 0 21%; min-width:0; box-sizing:border-box;">
+    <div>
       {radar_html}
     </div>
 
     <!-- 4) ボタン＋メリット -->
-    <div style="flex:0 0 18%; min-width:0; text-align:center; box-sizing:border-box;">
-      <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
-      <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
+    <div style="text-align:center;">
+      <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a>
+      <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a>
       <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
 
       <p style="
@@ -454,7 +457,6 @@ def render_card(i, row):
           margin-top:10px;
           line-height:1.5;
           word-break:break-word;
-          overflow-wrap:anywhere;
         ">
         <b>ログインするとできること</b><br>
         ・気になった柑橘を <b>購入ページまで進める</b><br>
@@ -467,7 +469,6 @@ def render_card(i, row):
 """
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
     st.markdown(html, unsafe_allow_html=True)
-
 
 for i, r in enumerate(top_items.itertuples(), start=1):
     render_card(i, r)
