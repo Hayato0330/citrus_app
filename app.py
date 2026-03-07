@@ -20,7 +20,7 @@ if "user_logged_in" not in st.session_state:
     st.session_state["user_name"] = None
     st.session_state["user_email"] = None
     st.session_state["user_picture"] = None
-    
+
 if "top_ids" not in st.session_state:
     st.session_state["top_ids"] = None
 
@@ -64,6 +64,36 @@ if route == "top":
         st.rerun()
 
 # ===== top_login ページ（ログイン後トップ）=====
+elif route == "top_login":
+    runpy.run_path("pages/1_top_login.py")
+
+    if st.session_state.get("navigate_to") == "input":
+        old_route = st.session_state.get("route")
+        st.session_state["route"] = "input"
+        append_event_log(
+            event_name="route_change",
+            event_data={"from": old_route, "to": "input"},
+        )
+        del st.session_state["navigate_to"]
+        st.rerun()
+
+    if st.session_state.get("navigate_to") == "logout":
+        old_route = st.session_state.get("route")
+        st.session_state["user_logged_in"] = False
+        st.session_state["auth_provider"] = None
+        st.session_state["user_id"] = None
+        st.session_state["user_name"] = None
+        st.session_state["user_email"] = None
+        st.session_state["user_picture"] = None
+        st.session_state["route"] = "top"
+        append_event_log(
+            event_name="route_change",
+            event_data={"from": old_route, "to": "top"},
+        )
+        del st.session_state["navigate_to"]
+        st.rerun()
+
+# ===== input ページ =====
 elif route == "input":
     # 入力ページの描画
     runpy.run_path("pages/2_input.py")
@@ -121,19 +151,25 @@ elif route == "input":
                         append_event_log(
                             event_name="route_change",
                             event_data={"from": old_route, "to": "result_login"},
-                    )
+                        )
                     else:
                         st.session_state["route"] = "result"
                         append_event_log(
                             event_name="route_change",
                             event_data={"from": old_route, "to": "result"},
                         )
+
                     st.rerun()
 
     # サイドバーにトップへ戻るボタン
     with st.sidebar:
         if st.button("← トップへ戻る", use_container_width=True):
+            old_route = st.session_state.get("route")
             st.session_state["route"] = "top"
+            append_event_log(
+                event_name="route_change",
+                event_data={"from": old_route, "to": "top"},
+            )
             st.rerun()
 
 # ===== login ページ =====
@@ -146,6 +182,7 @@ elif route == "result_login":
     if not st.session_state.get("top_ids"):
         st.session_state["route"] = "top"
         st.rerun()
+
     runpy.run_path("pages/3_output_login.py")
 
     with st.sidebar:
@@ -163,6 +200,7 @@ elif route == "result":
     if not st.session_state.get("top_ids"):
         st.session_state["route"] = "top"
         st.rerun()
+
     runpy.run_path("pages/3_output_nologin.py")
 
     with st.sidebar:
