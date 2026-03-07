@@ -409,7 +409,7 @@ def render_card(i, row):
         radar_html = f"""
         <div style="display:flex; justify-content:center;">
           <img src="{radar_url}" style="
-              width:210px;
+              width:280px;
               max-width:100%;
               border-radius:12px;
               padding:6px;
