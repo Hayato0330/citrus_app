@@ -291,7 +291,7 @@ def radar_png_data_url(
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles = angles + [angles[0]]
 
-    fig = plt.figure(figsize=(2.35, 2.15), dpi=170)
+    fig = plt.figure(figsize=(4.6, 4.0), dpi=220)
     ax = plt.subplot(111, polar=True)
 
     line_color = "#F59E0B"
@@ -409,7 +409,7 @@ def render_card(i, row):
         radar_html = f"""
         <div style="display:flex; justify-content:center;">
           <img src="{radar_url}" style="
-              width:230px;
+              width:300px;
               max-width:100%;
               border-radius:12px;
               padding:6px;
