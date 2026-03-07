@@ -430,24 +430,24 @@ def render_card(i, row):
     ">
 
     <!-- 1) 画像 -->
-    <div style="flex:0 0 300px; box-sizing:border-box;">
+    <div style="flex:0 0 26%; box-sizing:border-box;">
       <img src="{image_url}" style="width:100%; border-radius:12px; display:block;">
     </div>
 
     <!-- 2) 説明文（伸びない） -->
-    <div style="flex:0 0 360px; max-width:360px; box-sizing:border-box;">
+    <div style="flex:0 0 26%; max-width:360px; box-sizing:border-box;">
       <p style="font-size:14px; color:#333; margin:0; line-height:1.7; word-break:break-word;">
         {desc}
       </p>
     </div>
 
     <!-- 3) レーダー -->
-    <div style="flex:0 0 320px; box-sizing:border-box;">
+    <div style="flex:0 0 30%; box-sizing:border-box;">
       {radar_html}
     </div>
 
     <!-- 4) ボタン＋メリット -->
-    <div style="flex:0 0 220px; text-align:center; box-sizing:border-box;">
+    <div style="flex:0 0 18%; text-align:center; box-sizing:border-box;">
       <a class="link-btn amazon-btn disabled-btn" href="javascript:void(0)">Amazonで生果を探す</a><br>
       <a class="link-btn rakuten-btn disabled-btn" href="javascript:void(0)">楽天で贈答/家庭用を探す</a><br>
       <a class="link-btn satofuru-btn disabled-btn" href="javascript:void(0)">ふるさと納税で探す</a>
