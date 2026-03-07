@@ -170,7 +170,7 @@ st.markdown(
         /* PC幅で4列固定 */
         .result-grid {
           display:grid;
-          grid-template-columns: 340px minmax(220px, 1fr) 250px 220px;
+          grid-template-columns: 330px 250px 300px 210px;
           column-gap: 18px;
           align-items: start;
           width: 100%;
