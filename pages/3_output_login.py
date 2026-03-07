@@ -11,8 +11,6 @@ from pathlib import Path
 from io import BytesIO
 from matplotlib import font_manager
 
-from log_utils import append_event_log
-
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
 
@@ -408,20 +406,6 @@ df_sel = details_df[details_df["Item_ID"].isin(top_ids_int)].copy()
 df_sel["__order"] = pd.Categorical(df_sel["Item_ID"], categories=top_ids_int, ordered=True)
 df_sel = df_sel.sort_values("__order").reset_index(drop=True)
 top_items = df_sel.head(TOPK)
-
-
-# ===== 結果画面表示ログ（1回だけ） =====
-current_top_ids = [int(x) for x in top_ids_int]
-view_key = f"result_login_view::{','.join(map(str, current_top_ids))}"
-if st.session_state.get("last_result_login_view_key") != view_key:
-    append_event_log(
-        event_name="result_login_view",
-        event_data={
-            "route": "result_login",
-            "top_ids": current_top_ids,
-        },
-    )
-    st.session_state["last_result_login_view_key"] = view_key
 
 
 # ===== UI =====
