@@ -1,4 +1,3 @@
-# pages/3_output_nologin.py
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -112,10 +111,10 @@ st.markdown(
         .card h2, .card h3 { color:#000; margin-top:0; }
 
         .link-btn {
-          display:inline-block;
+          display:block;
           width:100%;
           padding:8px 10px;
-          margin:6px 0;
+          margin:8px 0;
           border-radius:6px;
           color:#fff !important;
           text-decoration:none;
@@ -124,8 +123,8 @@ st.markdown(
           transition:opacity .15s;
           cursor:pointer;
           box-sizing:border-box;
-          white-space:normal;
           line-height:1.35;
+          text-align:center;
         }
         .link-btn:hover { opacity:.9; }
 
@@ -166,6 +165,24 @@ st.markdown(
         button[title="Toggle sidebar"],
         button[aria-label="Toggle sidebar"] {
           display: none !important;
+        }
+
+        /* PC幅で4列固定 */
+        .result-grid {
+          display:grid;
+          grid-template-columns: 340px minmax(220px, 1fr) 250px 220px;
+          column-gap: 18px;
+          align-items: start;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        /* 少し狭い画面では少し詰める */
+        @media (max-width: 1500px) {
+          .result-grid {
+            grid-template-columns: 300px minmax(200px, 1fr) 220px 190px;
+            column-gap: 14px;
+          }
         }
         </style>
         """
@@ -274,7 +291,7 @@ def radar_png_data_url(
     angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
     angles = angles + [angles[0]]
 
-    fig = plt.figure(figsize=(2.45, 2.2), dpi=170)
+    fig = plt.figure(figsize=(2.2, 2.0), dpi=170)
     ax = plt.subplot(111, polar=True)
 
     line_color = "#F59E0B"
@@ -291,17 +308,17 @@ def radar_png_data_url(
     ax.fill(angles, values, color=fill_color, alpha=0.35)
 
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, fontsize=8.5, color=text_color, fontproperties=fp)
+    ax.set_xticklabels(labels, fontsize=8.2, color=text_color, fontproperties=fp)
 
     ax.set_ylim(1, 6)
     ax.set_yticks([1, 2, 3, 4, 5, 6])
-    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=7.5, color=text_color)
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=7.2, color=text_color)
     ax.set_rlabel_position(22)
 
     if title:
-        ax.set_title(title, fontsize=9.5, pad=8, color=text_color, fontproperties=fp)
+        ax.set_title(title, fontsize=9.2, pad=8, color=text_color, fontproperties=fp)
 
-    fig.tight_layout(pad=0.5)
+    fig.tight_layout(pad=0.4)
     buf = BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", transparent=True)
     plt.close(fig)
@@ -315,7 +332,9 @@ def load_details_df() -> pd.DataFrame:
     required = ("r2_account_id", "r2_access_key_id", "r2_secret_access_key", "r2_bucket")
     missing = [k for k in required if k not in st.secrets]
     if missing:
-        raise RuntimeError(f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。")
+        raise RuntimeError(
+            f"R2の接続情報が見つからない。secrets.toml に {missing} を設定してほしい。"
+        )
 
     s3 = boto3.client(
         "s3",
@@ -388,9 +407,9 @@ def render_card(i, row):
             title="この品種の特徴",
         )
         radar_html = f"""
-        <div style="display:flex; justify-content:center; align-items:flex-start;">
+        <div style="display:flex; justify-content:center;">
           <img src="{radar_url}" style="
-              width:220px;
+              width:210px;
               max-width:100%;
               border-radius:12px;
               padding:6px;
@@ -408,20 +427,13 @@ def render_card(i, row):
 <div class="card">
   <h2>{i}. {name}</h2>
 
-  <div style="
-      display:grid;
-      grid-template-columns: 360px 1fr 260px 220px;
-      column-gap:20px;
-      align-items:start;
-      width:100%;
-      box-sizing:border-box;
-    ">
+  <div class="result-grid">
 
     <!-- 1) 画像 -->
     <div>
       <img src="{image_url}" style="
           width:100%;
-          max-width:360px;
+          max-width:340px;
           border-radius:12px;
           display:block;
         ">
@@ -435,6 +447,7 @@ def render_card(i, row):
           margin:0;
           line-height:1.7;
           word-break:break-word;
+          overflow-wrap:anywhere;
         ">
         {desc}
       </p>
@@ -457,6 +470,7 @@ def render_card(i, row):
           margin-top:10px;
           line-height:1.5;
           word-break:break-word;
+          overflow-wrap:anywhere;
         ">
         <b>ログインするとできること</b><br>
         ・気になった柑橘を <b>購入ページまで進める</b><br>
@@ -469,6 +483,7 @@ def render_card(i, row):
 """
     html = "\n".join(line.lstrip() for line in html_raw.splitlines()).strip()
     st.markdown(html, unsafe_allow_html=True)
+
 
 for i, r in enumerate(top_items.itertuples(), start=1):
     render_card(i, r)
