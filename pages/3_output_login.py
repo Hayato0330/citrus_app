@@ -337,15 +337,15 @@ def radar_png_data_url(
     ax.fill(angles, values, color=fill_color, alpha=0.35)
 
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, fontsize=8.4, color=text_color, fontproperties=fp)
+    ax.set_xticklabels(labels, fontsize=10, color=text_color, fontproperties=fp)
 
     ax.set_ylim(1, 6)
     ax.set_yticks([1, 2, 3, 4, 5, 6])
-    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=7.3, color=text_color)
+    ax.set_yticklabels(["1", "2", "3", "4", "5", "6"], fontsize=9, color=text_color)
     ax.set_rlabel_position(22)
 
     if title:
-        ax.set_title(title, fontsize=9.4, pad=8, color=text_color, fontproperties=fp)
+        ax.set_title(title, fontsize=11, pad=8, color=text_color, fontproperties=fp)
 
     fig.tight_layout(pad=0.35)
     buf = BytesIO()
