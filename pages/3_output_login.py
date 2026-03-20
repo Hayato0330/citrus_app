@@ -10,6 +10,7 @@ import base64
 from pathlib import Path
 from io import BytesIO
 from matplotlib import font_manager
+from log_utils import build_click_log_url
 
 # ===== ページ設定 =====
 st.set_page_config(page_title="柑橘おすすめ診断 - 結果", page_icon="🍊", layout="wide")
@@ -216,26 +217,6 @@ def build_rakuten_url(name: str) -> str:
 def build_satofuru_url(name: str) -> str:
     q = quote(f"site:satofull.jp {name} みかん 柑橘")
     return f"https://www.google.com/search?q={q}"
-
-
-def build_logged_redirect_url(slot: str, destination_url: str) -> str:
-    """
-    外部リンクを直接踏ませず、Cloudflare Worker の中継URLを経由させる。
-    Worker 側で slot 列を 1 に更新してから destination_url に redirect する。
-    """
-    base = st.secrets.get("log_redirect_base_url", "").strip()
-    if not base:
-        return destination_url
-
-    session_id = st.session_state.get("sid", "")
-    user_id = st.session_state.get("user_id", "")
-    return (
-        f"{base}"
-        f"?session_id={quote(str(session_id))}"
-        f"&user_id={quote(str(user_id))}"
-        f"&slot={quote(str(slot))}"
-        f"&to={quote(destination_url, safe='')}"
-    )
 
 
 # ===== 何派 + SNSシェア =====
@@ -452,9 +433,9 @@ def render_card(i, row):
     except Exception:
         radar_html = ""
 
-    amazon_url = build_logged_redirect_url(f"{i}_a", build_amazon_url(name))
-    rakuten_url = build_logged_redirect_url(f"{i}_r", build_rakuten_url(name))
-    satofuru_url = build_logged_redirect_url(f"{i}_s", build_satofuru_url(name))
+    amazon_url = build_click_log_url(f"{i}_a", build_amazon_url(name))
+    rakuten_url = build_click_log_url(f"{i}_r", build_rakuten_url(name))
+    satofuru_url = build_click_log_url(f"{i}_s", build_satofuru_url(name))
 
     html_raw = f"""
 <div class="card">

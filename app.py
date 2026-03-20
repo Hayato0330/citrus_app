@@ -1,5 +1,6 @@
 # app.py
 import runpy
+import uuid
 import streamlit as st
 
 from log_utils import append_simple_log
@@ -110,7 +111,7 @@ elif route == "input":
                     st.error(f"類似度計算中にエラーが発生した．R2の設定やCSVを確認してほしい．（詳細: {e}）")
                 else:
                     st.session_state["top_ids"] = top_ids
-
+                    st.session_state["sid"] = str(uuid.uuid4()) # 診断ごとに新しい session_id を採番する by 本間
                     result_for_log = [
                         {"id": int(item_id), "rank": rank}
                         for rank, item_id in enumerate(top_ids, start=1)

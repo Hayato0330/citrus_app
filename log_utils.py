@@ -1,8 +1,10 @@
+# log_utils.py
 import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote # 本間追加
 
 import requests
 import streamlit as st
@@ -96,3 +98,27 @@ def append_simple_log(input_dict: dict, result_value=None) -> None:
 
     except Exception as e:
         st.info(f"ログ送信をスキップした（理由：{e}）")
+
+def build_click_log_url(slot: str, destination_url: str) -> str:
+    """
+    クリックログ更新用の Cloudflare Worker 中継URLを作る．
+
+    - append_simple_log() で INSERT 済みの session_id を手掛かりにする
+    - Worker 側で slot 列（例: 1_a, 2_r）を 0 -> 1 に UPDATE してから
+      destination_url へ redirect する
+    - log_redirect_base_url が未設定なら destination_url をそのまま返す
+    """
+    base = st.secrets.get("log_redirect_base_url", "").strip()
+    if not base:
+        return destination_url
+
+    session_id = st.session_state.get("sid", "")
+    user_id = st.session_state.get("user_id", "")
+
+    return (
+        f"{base}"
+        f"?session_id={quote(str(session_id))}"
+        f"&user_id={quote(str(user_id))}"
+        f"&slot={quote(str(slot))}"
+        f"&to={quote(destination_url, safe='')}"
+    )
