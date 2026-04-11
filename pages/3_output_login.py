@@ -499,15 +499,17 @@ for i, r in enumerate(top_items.itertuples(), start=1):
 names = [pick(r, "Item_name", "name", default="不明") for r in top_items.itertuples()]
 twitter_url = build_twitter_share(names)
 
-st.markdown(
-    f"""
-    <div class="card" style="text-align:center;">
-      <h3>まとめ</h3>
-      <a class="link-btn x-btn" href="{twitter_url}" target="_blank" rel="noopener noreferrer">Xでシェア</a>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+
+#st.markdown(
+#    f"""
+#    <div class="card" style="text-align:center;">
+#      <h3>まとめ</h3>
+#      <a class="link-btn x-btn" href="{twitter_url}" target="_blank" rel="noopener noreferrer">Xでシェア</a>
+#    </div>
+#    """,
+#    unsafe_allow_html=True,
+#)
+
 
 if st.button("← トップへ戻る", use_container_width=True):
     st.session_state["route"] = "top_login"
